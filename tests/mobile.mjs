@@ -15,7 +15,8 @@ try{
     await p.goto(base+'#'+route);await p.locator(route==='map'?'.projection-map':'main h1:visible,main h2:visible').first().waitFor();
     assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width} ${route}: overflow`);
     assert.ok(await p.locator('input:not([type=file]):not([type=checkbox]):not([type=color]),textarea,select').evaluateAll(es=>es.filter(e=>e.offsetWidth).every(e=>parseFloat(getComputedStyle(e).fontSize)>=16)),`${route}: input font triggers iOS zoom`);
-    if(!['screen','chat'].includes(route)){const r=await p.locator('#mobileNav').boundingBox();assert.ok(r.y+r.height<=height+1);}
+    if(route.startsWith('guide/')) assert.equal(await p.locator('#mobileNav').isVisible(),false);
+    else if(!['screen','chat'].includes(route)){const r=await p.locator('#mobileNav').boundingBox();assert.ok(r.y+r.height<=height+1);}
     if(['home','chat','map','studio'].includes(route))await p.screenshot({path:`qa/mobile/${route}-${width}.png`,fullPage:false});
    }
   }
@@ -48,6 +49,25 @@ try{
   await p.locator('.projection-map img[src*="/World_Imagery/"]').first().waitFor({state:'attached'});
   await p.getByRole('button',{name:'Схема',exact:true}).click();
   await p.locator('.projection-map img[src*="tile.openstreetmap.org"]').first().waitFor({state:'attached'});
+  const handle = p.getByRole('button',{name:'Точки на карте'});
+  const visibleSites = p.locator('.projection-sites').getByRole('button');
+  assert.equal(await visibleSites.count(),1);
+  const firstSite = await visibleSites.first().boundingBox();
+  const scanButton = await p.locator('.nav-scan').boundingBox();
+  assert.ok(firstSite.y + firstSite.height <= scanButton.y);
+  const touch = await context.newCDPSession(p);
+  const bounds = await handle.boundingBox();
+  const start = {x:bounds.x + bounds.width / 2, y:bounds.y + bounds.height / 2};
+  await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[start]});
+  await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:start.x,y:start.y - 80}]});
+  await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await touch.detach();
+  assert.equal(await handle.getAttribute('aria-expanded'),'true');
+  assert.equal(await visibleSites.count(),5);
+  await handle.press('Escape');
+  assert.equal(await handle.getAttribute('aria-expanded'),'false');
+  await handle.tap();
+  assert.equal(await handle.getAttribute('aria-expanded'),'true');
   const details = p.locator('.guide-detail');
   const points = ['44.006961,56.326997','44.008924,56.330091','43.995413,56.317288','44.013937,56.329342','44.01851,56.3228'];
   for (const [index, coords] of points.entries()) {
@@ -58,6 +78,7 @@ try{
    assert.equal(destination.searchParams.get('ll'),coords);
    assert.equal(destination.searchParams.get('pt'),coords);
    await details.locator('.guide-detail-map .projection-pin').waitFor();
+   assert.equal(await p.locator('#mobileNav').isVisible(),false);
    if (index === 4) await details.getByText('Улица Семашко, 19').waitFor();
    await details.getByRole('link',{name:'Назад',exact:true}).click();
    await p.locator('.projection-map').waitFor();
@@ -73,7 +94,7 @@ try{
   await p.locator('#mobileNav [href="#home"]').click();
   await p.locator('.guide-library').waitFor();
   await p.locator('.guide-archive-portrait').evaluateAll(photos=>Promise.all(photos.map(photo=>photo.decode())));
-  assert.deepEqual(await p.locator('.guide-library h2').allTextContents(),['Мобильный гид','Александр Попов','Валерий Чкалов','Кузьма Минин','Городовой']);
+  assert.deepEqual(await p.locator('.guide-library h2').allTextContents(),['Мобильный гид','Александр Попов','Кузьма Минин','Валерий Чкалов','Городовой']);
   assert.equal(await p.locator('#newGuide,.studio-invite').count(),0);
   assert.equal(await p.locator('main > *').count(),1);
   await p.goto(base+'#guides');

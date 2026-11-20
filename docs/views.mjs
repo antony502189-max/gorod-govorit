@@ -49,6 +49,18 @@ export const GuidePortrait = {
   </div>`,
 };
 
+function releasePress(event) {
+  if (event.isPrimary) event.currentTarget.classList.remove('is-pressed');
+}
+const pressFeedback = {
+  pointerdown(event) {
+    if (event.isPrimary && event.button === 0) event.currentTarget.classList.add('is-pressed');
+  },
+  pointerup: releasePress,
+  pointercancel: releasePress,
+  pointerleave: releasePress,
+};
+
 export const AppHeader = {
   props: ['showLanguages', 'language'],
   emits: ['language'],
@@ -92,7 +104,7 @@ export const AppHeader = {
       document.removeEventListener('pointerdown', outside);
       document.removeEventListener('focusin', outside);
     });
-    return { languages, menu, keys, choose, t };
+    return { languages, menu, keys, choose, pressFeedback, t };
   },
   render: appHeaderRender,
   template: `
@@ -104,7 +116,7 @@ export const AppHeader = {
       <span>{{ t('Город говорит') }}<small class="brand-light">{{ t('Нижний Новгород') }}</small></span>
     </a>
     <details v-if="showLanguages" ref="menu" class="language-menu" @keydown="keys">
-      <summary class="language-picker" :aria-label="t('Язык приложения') + ': ' + languages.find(item => item.id === language).name">
+      <summary class="language-picker" v-on="pressFeedback" :aria-label="t('Язык приложения') + ': ' + languages.find(item => item.id === language).name">
         <svg class="language-globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>
         <span>{{ languages.find(item => item.id === language).name }}</span>
         <svg class="language-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
@@ -155,7 +167,7 @@ export function highlightNavigation(nav, page) {
 const GuideCard = {
   props: ['entry'],
   components: { AppIcon },
-  setup() { return { archivePortraitPath, archiveSizes, t }; },
+  setup() { return { archivePortraitPath, archiveSizes, pressFeedback, t }; },
   render: guideCardRender,
   template: `
     <article :data-guide="entry.id" :class="['guide-card', entry.spotlight ? 'guide-spotlight' : 'guide-compact']">
@@ -169,9 +181,9 @@ const GuideCard = {
         <img class="guide-archive-portrait" :src="archivePortraitPath(entry.id)" alt="" decoding="async"
           v-bind="archiveSizes[entry.id]" :loading="entry.spotlight ? 'eager' : 'lazy'" :fetchpriority="entry.spotlight ? 'high' : null">
       </div>
-      <div v-if="entry.spotlight" class="guide-profile-actions" aria-hidden="true"><span class="guide-talk">{{ t('О персонаже') }}</span></div>
       <a class="guide-card-open" :href="'#guide/' + entry.id" data-flow-link :aria-label="t('О персонаже: {name}', {name: entry.name})">
-        <span class="guide-open-icon" aria-hidden="true"><AppIcon name="arrow" /></span>
+        <span v-if="entry.spotlight" class="guide-talk" v-on="pressFeedback">{{ t('О персонаже') }}</span>
+        <span class="guide-open-icon" aria-hidden="true" v-on="pressFeedback"><AppIcon name="arrow" /></span>
       </a>
     </article>
   `,
@@ -195,6 +207,7 @@ export const GuideCatalogue = {
 
 export const GuidePage = {
   props: ['guide', 'site', 'back'],
+  emits: ['scan'],
   components: { AppIcon, PortraitImage },
   render: guidePageRender,
   setup(props) {
@@ -225,7 +238,9 @@ export const GuidePage = {
         <p>{{ site ? t(site.story) : guide.greeting }}</p>
       </div>
       <div class="guide-detail-action">
-        <a class="button" :href="'#chat/' + guide.id" data-flow-link><AppIcon name="qr" />{{ t('Сканировать QR-код') }}</a>
+        <button type="button" class="button" aria-haspopup="dialog" @click="$emit('scan')">
+          <AppIcon name="qr" />{{ t('Сканировать QR-код') }}
+        </button>
       </div>
       <section v-if="site" class="guide-detail-site" aria-labelledby="guide-detail-place">
         <div class="guide-detail-address">
@@ -248,6 +263,41 @@ export const MapPage = {
     const canvas = ref(null);
     const list = ref(null);
     const memory = props.memory;
+    const sheet = ref(null);
+    const handle = ref(null);
+    const expanded = ref(Boolean(memory.sheetOpen));
+    const dragHeight = ref(null);
+    let gesture;
+    let suppressClick = false;
+    function setExpanded(open) {
+      expanded.value = memory.sheetOpen = open;
+      if (!open) list.value.scrollTop = 0;
+    }
+    function startDrag(event) {
+      if (!event.isPrimary || event.button !== 0) return;
+      event.preventDefault();
+      event.currentTarget.focus({preventScroll:true});
+      suppressClick = false;
+      gesture = {id:event.pointerId, y:event.clientY, height:sheet.value.offsetHeight};
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    function moveDrag(event) {
+      if (gesture?.id !== event.pointerId) return;
+      const distance = gesture.y - event.clientY;
+      if (Math.abs(distance) > 5 || dragHeight.value !== null) dragHeight.value = gesture.height + distance;
+    }
+    function endDrag(event) {
+      if (gesture?.id !== event.pointerId) return;
+      const distance = gesture.y - event.clientY;
+      suppressClick = dragHeight.value !== null || Math.abs(distance) > 5;
+      if (event.type === 'pointerup' && Math.abs(distance) > 24) setExpanded(distance > 0);
+      gesture = null;
+      dragHeight.value = null;
+    }
+    function toggleSheet(event) {
+      if (!suppressClick || event.detail === 0) setExpanded(!expanded.value);
+      suppressClick = false;
+    }
     const layer = ref(memory.layer);
     const status = ref('');
     const lifecycle = new AbortController();
@@ -256,6 +306,7 @@ export const MapPage = {
       const {id} = projectionSites[index];
       memory.selected = id;
       memory.focus = source;
+      memory.sheetScroll = list.value.scrollTop;
       emit('choose', id);
     }
     function basemap(kind) {
@@ -264,6 +315,17 @@ export const MapPage = {
       map?.setLayer(kind);
     }
     onMounted(async () => {
+      const rows = [...list.value.children];
+      function measureSheet() {
+        const top = handle.value.offsetHeight + 2;
+        sheet.value.parentElement.style.setProperty('--sheet-peek', (top + rows[0].offsetHeight) + 'px');
+        sheet.value.style.setProperty('--sheet-full', (top + rows.reduce((sum, row) => sum + row.offsetHeight, 0)) + 'px');
+      }
+      measureSheet();
+      const size = new ResizeObserver(measureSheet);
+      [handle.value, ...rows].forEach(element => size.observe(element));
+      lifecycle.signal.addEventListener('abort', () => size.disconnect(), {once:true});
+      if (expanded.value) list.value.scrollTop = memory.sheetScroll || 0;
       const focus = memory.focus;
       memory.focus = null;
       if (focus === 'list') list.value?.querySelector(`[data-site="${memory.selected}"]`)?.focus({preventScroll: true});
@@ -286,7 +348,8 @@ export const MapPage = {
       }
     });
     onBeforeUnmount(() => lifecycle.abort());
-    return {canvas, list, layer, status, select, basemap, sites: projectionSites, t};
+    return {canvas, list, sheet, handle, expanded, dragHeight, startDrag, moveDrag, endDrag, toggleSheet,
+      setExpanded, layer, status, select, basemap, sites: projectionSites, t};
   },
   template: `
     <section class="projection-map" aria-labelledby="projection-map-title">
@@ -299,17 +362,27 @@ export const MapPage = {
           <button type="button" :aria-pressed="layer === 'street'" @click="basemap('street')">{{ t('Схема') }}</button>
           <button type="button" :aria-pressed="layer === 'satellite'" @click="basemap('satellite')">{{ t('Спутник') }}</button>
         </div>
+        <p v-if="status" class="projection-map-status" role="status">{{ status }}</p>
       </div>
-      <p v-if="status" class="projection-map-status" role="status">{{ status }}</p>
-      <ul ref="list" class="projection-sites" :aria-label="t('Пять точек проекции')">
-        <li v-for="(site, index) in sites" :key="site.id">
-          <button type="button" :data-site="site.id" @click="select(index, 'list')">
-            <span class="projection-site-index" aria-hidden="true">{{ index + 1 }}</span>
-            <span class="projection-site-label"><strong>{{ t(site.place) }}</strong><small>{{ t(site.guide) }}</small></span>
-            <AppIcon name="caret" />
-          </button>
-        </li>
-      </ul>
+      <div ref="sheet" class="projection-sheet" :class="{'is-expanded':expanded, 'is-dragging':dragHeight !== null}"
+        :style="{'--drag-height':dragHeight === null ? null : dragHeight + 'px'}"
+        @keydown.esc="setExpanded(false); handle.focus()">
+        <button ref="handle" type="button" class="projection-sheet-handle" :aria-expanded="expanded"
+          aria-controls="projection-site-list" @click="toggleSheet" @pointerdown="startDrag" @pointermove="moveDrag"
+          @pointerup="endDrag" @pointercancel="endDrag" @lostpointercapture="endDrag">
+          <span aria-hidden="true" class="sheet-grip"></span>
+          {{ t('Точки на карте') }}
+        </button>
+        <ul ref="list" id="projection-site-list" class="projection-sites" :aria-label="t('Пять точек проекции')">
+          <li v-for="(site, index) in sites" :key="site.id" :inert="!expanded && index > 0">
+            <button type="button" :data-site="site.id" @click="select(index, 'list')">
+              <span class="projection-site-index" aria-hidden="true">{{ index + 1 }}</span>
+              <span class="projection-site-label"><strong>{{ t(site.place) }}</strong><small>{{ t(site.guide) }}</small></span>
+              <AppIcon name="caret" />
+            </button>
+          </li>
+        </ul>
+      </div>
     </section>
   `,
 };

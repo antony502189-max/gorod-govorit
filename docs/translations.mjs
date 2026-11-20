@@ -1,5 +1,6 @@
 // Russian UI and catalogue copy remain the source text. English and Chinese are bundled locally.
 const rows = [
+  ['Точки на карте','Map locations','地图地点'],
   ['Отменить запись','Cancel recording','取消录音'],
   ['Речь не слышна. Нажмите микрофон и повторите вопрос.','No speech heard. Tap the microphone to try again.','没有听到语音。请点按麦克风重试。'],
   ['Запись прервалась. Нажмите микрофон, чтобы повторить.','Recording stopped. Tap the microphone to try again.','录音已中断。请点按麦克风重试。'],

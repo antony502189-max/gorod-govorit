@@ -18,7 +18,7 @@ return function render(_ctx, _cache) {
 })(Vue);
 
 export const appHeaderRender = (Vue => {
-const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, resolveComponent: _resolveComponent, createVNode: _createVNode, createCommentVNode: _createCommentVNode } = Vue
+const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, toHandlers: _toHandlers, mergeProps: _mergeProps, renderList: _renderList, Fragment: _Fragment, resolveComponent: _resolveComponent, createVNode: _createVNode, createCommentVNode: _createCommentVNode } = Vue
 
 const _hoisted_1 = ["aria-label"]
 const _hoisted_2 = { class: "brand-light" }
@@ -67,10 +67,9 @@ return function render(_ctx, _cache) {
           class: "language-menu",
           onKeydown: _ctx.keys
         }, [
-          _createElementVNode("summary", {
-            class: "language-picker",
+          _createElementVNode("summary", _mergeProps({ class: "language-picker" }, _toHandlers(_ctx.pressFeedback, true), {
             "aria-label": _ctx.t('Язык приложения') + ': ' + _ctx.languages.find(item => item.id === _ctx.language).name
-          }, [
+          }), [
             _cache[1] || (_cache[1] = _createElementVNode("svg", {
               class: "language-globe",
               viewBox: "0 0 24 24",
@@ -97,7 +96,7 @@ return function render(_ctx, _cache) {
             }, [
               _createElementVNode("path", { d: "m4 6 4 4 4-4" })
             ], -1 /* CACHED */))
-          ], 8 /* PROPS */, _hoisted_4),
+          ], 16 /* FULL_PROPS */, _hoisted_4),
           _createElementVNode("div", {
             class: "language-options",
             role: "group",
@@ -170,7 +169,7 @@ return function render(_ctx, _cache) {
 })(Vue);
 
 export const guideCardRender = (Vue => {
-const { toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, mergeProps: _mergeProps, resolveComponent: _resolveComponent, createVNode: _createVNode, normalizeClass: _normalizeClass } = Vue
+const { toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, mergeProps: _mergeProps, toHandlers: _toHandlers, resolveComponent: _resolveComponent, createVNode: _createVNode, normalizeClass: _normalizeClass } = Vue
 
 const _hoisted_1 = ["data-guide"]
 const _hoisted_2 = { class: "guide-profile" }
@@ -181,17 +180,7 @@ const _hoisted_4 = {
 }
 const _hoisted_5 = ["data-portrait-for"]
 const _hoisted_6 = ["src", "loading", "fetchpriority"]
-const _hoisted_7 = {
-  key: 0,
-  class: "guide-profile-actions",
-  "aria-hidden": "true"
-}
-const _hoisted_8 = { class: "guide-talk" }
-const _hoisted_9 = ["href", "aria-label"]
-const _hoisted_10 = {
-  class: "guide-open-icon",
-  "aria-hidden": "true"
-}
+const _hoisted_7 = ["href", "aria-label"]
 
 return function render(_ctx, _cache) {
   const _component_AppIcon = _resolveComponent("AppIcon")
@@ -223,21 +212,25 @@ return function render(_ctx, _cache) {
         fetchpriority: _ctx.entry.spotlight ? 'high' : null
       }), null, 16 /* FULL_PROPS */, _hoisted_6)
     ], 8 /* PROPS */, _hoisted_5),
-    (_ctx.entry.spotlight)
-      ? (_openBlock(), _createElementBlock("div", _hoisted_7, [
-          _createElementVNode("span", _hoisted_8, _toDisplayString(_ctx.t('О персонаже')), 1 /* TEXT */)
-        ]))
-      : _createCommentVNode("v-if", true),
     _createElementVNode("a", {
       class: "guide-card-open",
       href: '#guide/' + _ctx.entry.id,
       "data-flow-link": "",
       "aria-label": _ctx.t('О персонаже: {name}', {name: _ctx.entry.name})
     }, [
-      _createElementVNode("span", _hoisted_10, [
+      (_ctx.entry.spotlight)
+        ? (_openBlock(), _createElementBlock("span", _mergeProps({
+            key: 0,
+            class: "guide-talk"
+          }, _toHandlers(_ctx.pressFeedback, true)), _toDisplayString(_ctx.t('О персонаже')), 17 /* TEXT, FULL_PROPS */))
+        : _createCommentVNode("v-if", true),
+      _createElementVNode("span", _mergeProps({
+        class: "guide-open-icon",
+        "aria-hidden": "true"
+      }, _toHandlers(_ctx.pressFeedback, true)), [
         _createVNode(_component_AppIcon, { name: "arrow" })
-      ])
-    ], 8 /* PROPS */, _hoisted_9)
+      ], 16 /* FULL_PROPS */)
+    ], 8 /* PROPS */, _hoisted_7)
   ], 10 /* CLASS, PROPS */, _hoisted_1))
 }
 })(Vue);
@@ -289,7 +282,7 @@ const _hoisted_5 = { class: "guide-detail-card" }
 const _hoisted_6 = { class: "guide-detail-portrait" }
 const _hoisted_7 = { class: "guide-detail-role" }
 const _hoisted_8 = { class: "guide-detail-action" }
-const _hoisted_9 = ["href"]
+const _hoisted_9 = ["onClick"]
 const _hoisted_10 = {
   key: 0,
   class: "guide-detail-site",
@@ -331,10 +324,11 @@ return function render(_ctx, _cache) {
       _createElementVNode("p", null, _toDisplayString(_ctx.site ? _ctx.t(_ctx.site.story) : _ctx.guide.greeting), 1 /* TEXT */)
     ]),
     _createElementVNode("div", _hoisted_8, [
-      _createElementVNode("a", {
+      _createElementVNode("button", {
+        type: "button",
         class: "button",
-        href: '#chat/' + _ctx.guide.id,
-        "data-flow-link": ""
+        "aria-haspopup": "dialog",
+        onClick: $event => (_ctx.$emit('scan'))
       }, [
         _createVNode(_component_AppIcon, { name: "qr" }),
         _createTextVNode(_toDisplayString(_ctx.t('Сканировать QR-код')), 1 /* TEXT */)
@@ -368,7 +362,7 @@ return function render(_ctx, _cache) {
 })(Vue);
 
 export const mapPageRender = (Vue => {
-const { toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, resolveComponent: _resolveComponent, createVNode: _createVNode } = Vue
+const { toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, resolveComponent: _resolveComponent, createVNode: _createVNode, withKeys: _withKeys, normalizeClass: _normalizeClass, normalizeStyle: _normalizeStyle } = Vue
 
 const _hoisted_1 = {
   class: "projection-map",
@@ -386,13 +380,16 @@ const _hoisted_9 = {
   class: "projection-map-status",
   role: "status"
 }
-const _hoisted_10 = ["aria-label"]
-const _hoisted_11 = ["data-site", "onClick"]
-const _hoisted_12 = {
+const _hoisted_10 = ["onKeydown"]
+const _hoisted_11 = ["aria-expanded", "onClick", "onPointerdown", "onPointermove", "onPointerup", "onPointercancel", "onLostpointercapture"]
+const _hoisted_12 = ["aria-label"]
+const _hoisted_13 = ["inert"]
+const _hoisted_14 = ["data-site", "onClick"]
+const _hoisted_15 = {
   class: "projection-site-index",
   "aria-hidden": "true"
 }
-const _hoisted_13 = { class: "projection-site-label" }
+const _hoisted_16 = { class: "projection-site-label" }
 
 return function render(_ctx, _cache) {
   const _component_AppIcon = _resolveComponent("AppIcon")
@@ -423,35 +420,63 @@ return function render(_ctx, _cache) {
           "aria-pressed": _ctx.layer === 'satellite',
           onClick: $event => (_ctx.basemap('satellite'))
         }, _toDisplayString(_ctx.t('Спутник')), 9 /* TEXT, PROPS */, _hoisted_8)
-      ], 8 /* PROPS */, _hoisted_6)
+      ], 8 /* PROPS */, _hoisted_6),
+      (_ctx.status)
+        ? (_openBlock(), _createElementBlock("p", _hoisted_9, _toDisplayString(_ctx.status), 1 /* TEXT */))
+        : _createCommentVNode("v-if", true)
     ]),
-    (_ctx.status)
-      ? (_openBlock(), _createElementBlock("p", _hoisted_9, _toDisplayString(_ctx.status), 1 /* TEXT */))
-      : _createCommentVNode("v-if", true),
-    _createElementVNode("ul", {
-      ref: "list",
-      class: "projection-sites",
-      "aria-label": _ctx.t('Пять точек проекции')
+    _createElementVNode("div", {
+      ref: "sheet",
+      class: _normalizeClass(["projection-sheet", {'is-expanded':_ctx.expanded, 'is-dragging':_ctx.dragHeight !== null}]),
+      style: _normalizeStyle({'--drag-height':_ctx.dragHeight === null ? null : _ctx.dragHeight + 'px'}),
+      onKeydown: _withKeys($event => {_ctx.setExpanded(false); _ctx.handle.focus()}, ["esc"])
     }, [
-      (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.sites, (site, index) => {
-        return (_openBlock(), _createElementBlock("li", {
-          key: site.id
-        }, [
-          _createElementVNode("button", {
-            type: "button",
-            "data-site": site.id,
-            onClick: $event => (_ctx.select(index, 'list'))
+      _createElementVNode("button", {
+        ref: "handle",
+        type: "button",
+        class: "projection-sheet-handle",
+        "aria-expanded": _ctx.expanded,
+        "aria-controls": "projection-site-list",
+        onClick: _ctx.toggleSheet,
+        onPointerdown: _ctx.startDrag,
+        onPointermove: _ctx.moveDrag,
+        onPointerup: _ctx.endDrag,
+        onPointercancel: _ctx.endDrag,
+        onLostpointercapture: _ctx.endDrag
+      }, [
+        _cache[0] || (_cache[0] = _createElementVNode("span", {
+          "aria-hidden": "true",
+          class: "sheet-grip"
+        }, null, -1 /* CACHED */)),
+        _createTextVNode(" " + _toDisplayString(_ctx.t('Точки на карте')), 1 /* TEXT */)
+      ], 40 /* PROPS, NEED_HYDRATION */, _hoisted_11),
+      _createElementVNode("ul", {
+        ref: "list",
+        id: "projection-site-list",
+        class: "projection-sites",
+        "aria-label": _ctx.t('Пять точек проекции')
+      }, [
+        (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.sites, (site, index) => {
+          return (_openBlock(), _createElementBlock("li", {
+            key: site.id,
+            inert: !_ctx.expanded && index > 0
           }, [
-            _createElementVNode("span", _hoisted_12, _toDisplayString(index + 1), 1 /* TEXT */),
-            _createElementVNode("span", _hoisted_13, [
-              _createElementVNode("strong", null, _toDisplayString(_ctx.t(site.place)), 1 /* TEXT */),
-              _createElementVNode("small", null, _toDisplayString(_ctx.t(site.guide)), 1 /* TEXT */)
-            ]),
-            _createVNode(_component_AppIcon, { name: "caret" })
-          ], 8 /* PROPS */, _hoisted_11)
-        ]))
-      }), 128 /* KEYED_FRAGMENT */))
-    ], 8 /* PROPS */, _hoisted_10)
+            _createElementVNode("button", {
+              type: "button",
+              "data-site": site.id,
+              onClick: $event => (_ctx.select(index, 'list'))
+            }, [
+              _createElementVNode("span", _hoisted_15, _toDisplayString(index + 1), 1 /* TEXT */),
+              _createElementVNode("span", _hoisted_16, [
+                _createElementVNode("strong", null, _toDisplayString(_ctx.t(site.place)), 1 /* TEXT */),
+                _createElementVNode("small", null, _toDisplayString(_ctx.t(site.guide)), 1 /* TEXT */)
+              ]),
+              _createVNode(_component_AppIcon, { name: "caret" })
+            ], 8 /* PROPS */, _hoisted_14)
+          ], 8 /* PROPS */, _hoisted_13))
+        }), 128 /* KEYED_FRAGMENT */))
+      ], 8 /* PROPS */, _hoisted_12)
+    ], 46 /* CLASS, STYLE, PROPS, NEED_HYDRATION */, _hoisted_10)
   ]))
 }
 })(Vue);
@@ -1552,28 +1577,18 @@ const _hoisted_24 = {
 }
 const _hoisted_25 = ["disabled", "onClick"]
 const _hoisted_26 = ["onSubmit"]
-const _hoisted_27 = ["value", "onInput", "aria-label", "placeholder"]
-const _hoisted_28 = ["aria-label", "aria-expanded", "disabled", "onClick"]
-const _hoisted_29 = ["aria-label", "disabled"]
+const _hoisted_27 = ["aria-label", "disabled"]
+const _hoisted_28 = ["value", "onInput", "aria-label", "placeholder"]
+const _hoisted_29 = ["aria-label"]
 const _hoisted_30 = ["aria-label"]
-const _hoisted_31 = { class: "station-audio-actions" }
-const _hoisted_32 = ["disabled", "onClick"]
-const _hoisted_33 = ["disabled", "onClick"]
-const _hoisted_34 = ["onChange"]
-const _hoisted_35 = {
-  key: 0,
-  class: "station-access"
-}
-const _hoisted_36 = ["src", "aria-label"]
-const _hoisted_37 = { class: "station-audio-actions" }
-const _hoisted_38 = ["disabled", "onClick"]
-const _hoisted_39 = ["onClick"]
-const _hoisted_40 = {
+const _hoisted_31 = ["aria-label"]
+const _hoisted_32 = ["aria-label", "disabled"]
+const _hoisted_33 = {
   key: 2,
   class: "conversation-error",
   role: "alert"
 }
-const _hoisted_41 = {
+const _hoisted_34 = {
   key: 3,
   class: "station-access",
   role: "status"
@@ -1697,10 +1712,21 @@ return function render(_ctx, _cache) {
       (_ctx.ui.token)
         ? (_openBlock(), _createElementBlock(_Fragment, { key: 1 }, [
             _createElementVNode("form", {
+              ref: "voiceForm",
               class: "conversation-form",
               id: "askForm",
               onSubmit: _withModifiers(_ctx.submit, ["prevent"])
             }, [
+              _createElementVNode("button", {
+                type: "button",
+                class: "round-control conversation-dictate",
+                "aria-label": _ctx.t('Диктовать вопрос'),
+                disabled: !_ctx.available || !!_ctx.ui.working || _ctx.ui.recording
+              }, [
+                _createVNode(_component_AppIcon, {
+                  markup: _ctx.sign('mic')
+                }, null, 8 /* PROPS */, ["markup"])
+              ], 8 /* PROPS */, _hoisted_27),
               _createElementVNode("input", {
                 ref: "input",
                 id: "question",
@@ -1713,19 +1739,47 @@ return function render(_ctx, _cache) {
                 required: "",
                 autocomplete: "off",
                 enterkeyhint: "send"
-              }, null, 40 /* PROPS, NEED_HYDRATION */, _hoisted_27),
+              }, null, 40 /* PROPS, NEED_HYDRATION */, _hoisted_28),
               _createElementVNode("button", {
                 type: "button",
-                class: "round-control station-record-toggle",
-                "aria-label": _ctx.t('Аудиовопрос'),
-                "aria-expanded": _ctx.ui.audioOpen,
-                disabled: !_ctx.available && !_ctx.ui.audioOpen,
-                onClick: _ctx.toggleAudio
+                class: "round-control dictation-cancel",
+                "aria-label": _ctx.t('Отменить запись')
               }, [
                 _createVNode(_component_AppIcon, {
-                  markup: _ctx.sign('mic')
+                  markup: _ctx.sign('cancel')
                 }, null, 8 /* PROPS */, ["markup"])
-              ], 8 /* PROPS */, _hoisted_28),
+              ], 8 /* PROPS */, _hoisted_29),
+              _cache[1] || (_cache[1] = _createElementVNode("div", { class: "dictation-panel" }, [
+                _createElementVNode("div", { class: "dictation-meta" }, [
+                  _createElementVNode("span", { role: "status" }),
+                  _createElementVNode("time", { "aria-hidden": "true" })
+                ]),
+                _createElementVNode("canvas", {
+                  width: "240",
+                  height: "38",
+                  "aria-hidden": "true"
+                }),
+                _createElementVNode("div", { class: "dictation-preview" })
+              ], -1 /* CACHED */)),
+              _createElementVNode("button", {
+                type: "button",
+                class: "round-control dictation-pause",
+                "aria-label": _ctx.t('Приостановить диктовку')
+              }, [
+                _createVNode(_component_AppIcon, {
+                  markup: _ctx.sign('pause')
+                }, null, 8 /* PROPS */, ["markup"])
+              ], 8 /* PROPS */, _hoisted_30),
+              _createElementVNode("button", {
+                type: "button",
+                class: "round-control dictation-confirm",
+                "aria-label": _ctx.t('Отправить вопрос'),
+                disabled: ""
+              }, [
+                _createVNode(_component_AppIcon, {
+                  markup: _ctx.sign('send')
+                }, null, 8 /* PROPS */, ["markup"])
+              ], 8 /* PROPS */, _hoisted_31),
               _createElementVNode("button", {
                 type: "submit",
                 id: "sendQuestion",
@@ -1736,72 +1790,20 @@ return function render(_ctx, _cache) {
                 _createVNode(_component_AppIcon, {
                   markup: _ctx.sign('send')
                 }, null, 8 /* PROPS */, ["markup"])
-              ], 8 /* PROPS */, _hoisted_29)
+              ], 8 /* PROPS */, _hoisted_32)
             ], 40 /* PROPS, NEED_HYDRATION */, _hoisted_26),
-            (_ctx.ui.audioOpen)
-              ? (_openBlock(), _createElementBlock("section", {
-                  key: 0,
-                  class: "station-audio",
-                  "aria-label": _ctx.t('Аудиовопрос')
-                }, [
-                  _createElementVNode("div", _hoisted_31, [
-                    (_ctx.hasMic)
-                      ? (_openBlock(), _createElementBlock("button", {
-                          key: 0,
-                          class: "button",
-                          type: "button",
-                          disabled: (!_ctx.available || !!_ctx.ui.working) && !_ctx.ui.recording,
-                          onClick: _ctx.record
-                        }, _toDisplayString(_ctx.t(_ctx.ui.recording ? 'Остановить запись' : 'Записать до 20 секунд')), 9 /* TEXT, PROPS */, _hoisted_32))
-                      : _createCommentVNode("v-if", true),
-                    _createElementVNode("button", {
-                      class: "button",
-                      type: "button",
-                      disabled: !_ctx.available || !!_ctx.ui.working || _ctx.ui.recording,
-                      onClick: $event => (_ctx.upload.click())
-                    }, _toDisplayString(_ctx.t('Загрузить запись')), 9 /* TEXT, PROPS */, _hoisted_33),
-                    _createElementVNode("input", {
-                      ref: "upload",
-                      hidden: "",
-                      type: "file",
-                      accept: "audio/*,video/mp4,video/webm",
-                      onChange: _ctx.uploadClip
-                    }, null, 40 /* PROPS, NEED_HYDRATION */, _hoisted_34)
-                  ]),
-                  (!_ctx.hasMic)
-                    ? (_openBlock(), _createElementBlock("p", _hoisted_35, _toDisplayString(_ctx.t('Для записи микрофона нужен HTTPS. Здесь можно загрузить запись.')), 1 /* TEXT */))
-                    : _createCommentVNode("v-if", true),
-                  (_ctx.ui.clip)
-                    ? (_openBlock(), _createElementBlock(_Fragment, { key: 1 }, [
-                        _createElementVNode("audio", {
-                          controls: "",
-                          src: _ctx.ui.clip,
-                          "aria-label": _ctx.t('Прослушать запись')
-                        }, null, 8 /* PROPS */, _hoisted_36),
-                        _createElementVNode("div", _hoisted_37, [
-                          _createElementVNode("button", {
-                            type: "button",
-                            class: "button primary",
-                            disabled: !_ctx.available || !!_ctx.ui.working,
-                            onClick: _ctx.decode
-                          }, _toDisplayString(_ctx.t('Распознать запись')), 9 /* TEXT, PROPS */, _hoisted_38),
-                          _createElementVNode("button", {
-                            type: "button",
-                            class: "button",
-                            onClick: _ctx.clearClip
-                          }, _toDisplayString(_ctx.t('Удалить')), 9 /* TEXT, PROPS */, _hoisted_39)
-                        ])
-                      ], 64 /* STABLE_FRAGMENT */))
-                    : _createCommentVNode("v-if", true)
-                ], 8 /* PROPS */, _hoisted_30))
-              : _createCommentVNode("v-if", true)
+            _cache[2] || (_cache[2] = _createElementVNode("p", {
+              class: "dictation-hint",
+              role: "status",
+              hidden: ""
+            }, null, -1 /* CACHED */))
           ], 64 /* STABLE_FRAGMENT */))
         : _createCommentVNode("v-if", true),
       (_ctx.ui.error)
-        ? (_openBlock(), _createElementBlock("p", _hoisted_40, _toDisplayString(_ctx.ui.error), 1 /* TEXT */))
+        ? (_openBlock(), _createElementBlock("p", _hoisted_33, _toDisplayString(_ctx.ui.error), 1 /* TEXT */))
         : _createCommentVNode("v-if", true),
       (_ctx.ui.working)
-        ? (_openBlock(), _createElementBlock("p", _hoisted_41, _toDisplayString(_ctx.ui.working), 1 /* TEXT */))
+        ? (_openBlock(), _createElementBlock("p", _hoisted_34, _toDisplayString(_ctx.ui.working), 1 /* TEXT */))
         : _createCommentVNode("v-if", true)
     ])
   ], 8 /* PROPS */, _hoisted_1))

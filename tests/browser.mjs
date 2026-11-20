@@ -12,7 +12,11 @@ page.on('dialog',d=>d.accept());
 const saved=()=>page.locator('#workspaceStatus [role=status]').filter({hasText:'Все изменения сохранены'}).waitFor({state:'attached'});
 async function openGuideChat(tab, id) {
   await tab.locator(`a[href="#guide/${id}"]`).click();
-  await tab.locator(`.guide-detail[data-guide="${id}"] .guide-detail-action a`).click();
+  // Exercise the local chat independently of station admission.
+  await tab.evaluate(id=>{
+    history.pushState({flowBack:'#guide/'+id},'', '#chat/'+id);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  },id);
   const chat = tab.locator(`.conversation[data-guide="${id}"]`);
   await chat.waitFor();
   return chat;
@@ -25,7 +29,7 @@ try{
   await catalogue.waitFor();
   assert.equal(await page.locator('main > *').count(),1);
   assert.deepEqual(await catalogue.locator('h2').allTextContents(),[
-   'Максим Горький','Александр Попов','Валерий Чкалов','Кузьма Минин','Городовой',
+   'Максим Горький','Александр Попов','Кузьма Минин','Валерий Чкалов','Городовой',
   ]);
   assert.equal(await catalogue.locator('.guide-card-open > .guide-open-icon').count(),5);
   assert.equal(await catalogue.locator('.guide-edit').count(),0);
@@ -257,12 +261,16 @@ try{
    const profile = tab.locator('.guide-detail[data-guide="minin"]');
    await profile.locator('h1:focus').waitFor();
    await profile.getByRole('link', {name:'Открыть в Яндекс Картах'}).waitFor();
-   await profile.getByRole('link', {name:'Сканировать QR-код'}).click();
-   const chat = tab.locator('.conversation[data-guide="minin"]');
-   await chat.waitFor();
+   const scan = profile.getByRole('button', {name:'Сканировать QR-код'});
+   await scan.press('Enter');
+   const scanner = tab.locator('#qr-scanner:modal');
+   await scanner.waitFor();
+   assert.equal(new URL(tab.url()).hash,'#guide/minin');
+   assert.equal(await tab.locator('.conversation').count(),0);
    assert.equal(await tab.locator('#mobileNav').isVisible(), false);
-   await tab.goBack();
-   await profile.getByRole('link', {name:'Сканировать QR-код'}).waitFor();
+   await tab.keyboard.press('Escape');
+   await scanner.waitFor({state:'hidden'});
+   await scan.and(tab.locator(':focus')).waitFor();
    await profile.getByRole('link', {name:'Назад'}).click();
    await pin.and(tab.locator(':focus')).waitFor();
   } finally {await tab.close();}
@@ -317,14 +325,19 @@ try{
    assert.equal(await picker.innerText(),'English');
    await tab.getByRole('link',{name:'Map',exact:true}).click();
    await tab.getByRole('button',{name:'Satellite',exact:true}).waitFor();
+   await tab.getByRole('button',{name:'Map locations'}).click();
    await tab.locator('.projection-sites').getByRole('button',{name:/Maxim Gorky Museum Apartment/}).click();
    await tab.locator('.guide-detail').getByText('19 Semashko Street').waitFor();
+   await tab.getByRole('link',{name:'Back',exact:true}).click();
    await tab.getByRole('link',{name:'Home',exact:true}).click();
    await picker.click();
    await tab.getByRole('button',{name:'简体中文',exact:true}).click();
    assert.equal(await tab.locator('html').getAttribute('lang'),'zh-Hans');
    await tab.getByRole('link',{name:/瓦列里·契卡洛夫/}).click();
-   await tab.getByRole('link',{name:'扫描二维码'}).click();
+   await tab.getByRole('button',{name:'扫描二维码'}).click();
+   await tab.locator('#qr-scanner:modal').waitFor();
+   await tab.keyboard.press('Escape');
+   await tab.goto(base+'#chat/chkalov');
    await tab.getByRole('button',{name:'您出生在哪里？',exact:true}).click();
    await tab.locator('#messages').getByText(/我出生在下诺夫哥罗德省/).waitFor();
    await tab.getByRole('button',{name:'资料来源',exact:true}).click();

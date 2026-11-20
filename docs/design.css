@@ -52,3 +52,27 @@
 @media (prefers-reduced-transparency: reduce) {
   :root { --glass: #e9f2ff; --glass-float: #e5effe; --glass-field: #eff6ff; }
 }
+
+:is(header .conversation-back, header .back) {
+  transition: scale 130ms ease-out;
+}
+:is(header .conversation-back, header .back):where(:not([aria-disabled="true"])):active {
+  scale: .97;
+  transition-duration: 65ms;
+}
+
+:is(.nav-scan, .guide-detail-action .button) {
+  transition: scale 130ms ease-out, filter 130ms ease-out;
+}
+:is(.nav-scan, .guide-detail-action .button):active {
+  scale: .97;
+  filter: brightness(.9);
+  transition-duration: 65ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.nav-scan, .guide-detail-action .button, header .conversation-back, header .back),
+  :is(.nav-scan, .guide-detail-action .button, header .conversation-back, header .back):active {
+    scale: 1;
+    transition: none;
+  }
+}

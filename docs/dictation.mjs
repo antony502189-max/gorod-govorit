@@ -1,10 +1,11 @@
 import {locale, speechLocale, t} from './i18n.mjs';
+import {stationAsr, transcribeOnStation} from './station-asr.mjs';
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const endpoint = document.querySelector('meta[name="dictation-endpoint"]')?.content;
 const format = window.MediaRecorder && ['audio/webm;codecs=opus','audio/mp4','audio/ogg;codecs=opus'].find(type => MediaRecorder.isTypeSupported?.(type));
 const local = Boolean(endpoint && format && navigator.mediaDevices?.getUserMedia);
-export const canDictate = local || Boolean(Recognition);
+export const canDictate = stationAsr || local || Boolean(Recognition);
 
 // Plot a short history of microphone levels. The audio graph has no speaker output.
 function drawLevels(canvas, stream, signal) {
@@ -49,7 +50,7 @@ function drawLevels(canvas, stream, signal) {
   frame = requestAnimationFrame(draw);
 }
 
-export function bindDictation(form, {onChange, onSend, showError, beforeStart}) {
+export function bindDictation(form, {onChange, onSend, showError, beforeStart, transcribe = stationAsr ? transcribeOnStation : null}) {
   const input = form.elements.question;
   const mic = form.querySelector('.conversation-dictate');
   const panel = form.querySelector('.dictation-panel');
@@ -63,6 +64,28 @@ export function bindDictation(form, {onChange, onSend, showError, beforeStart}) 
   const hint = form.parentElement.querySelector('.dictation-hint');
   let session;
   let recordedMs = 0;
+  const server = Boolean(transcribe || local);
+  const file = document.createElement('input');
+  file.type='file';file.accept='audio/*,video/mp4,video/webm';file.setAttribute('capture','microphone');
+  file.hidden=true;file.setAttribute('aria-label',t('Загрузить запись'));form.append(file);
+  file.addEventListener('cancel',()=>cancelRecording());
+  async function upload(current, blob, name) {
+    if(!blob.size)throw Error('Речь не слышна. Нажмите микрофон и повторите вопрос.');
+    if(blob.size>10*1024*1024)throw Error('Запись должна быть меньше 10 МБ.');
+    if(transcribe)return transcribe(blob,name,current.resources.signal);
+    const url=new URL(endpoint,location.href);url.searchParams.set('language',locale());
+    const result=await fetch(url,{method:'POST',body:blob,signal:current.resources.signal});
+    if(!result.ok)throw Error('Не удалось распознать запись. Попробуйте ещё раз.');
+    const data=await result.json();return data.text;
+  }
+  file.addEventListener('change',async()=>{
+    const current=session, blob=file.files?.[0];file.value='';
+    if(!current)return;
+    if(!blob){cancelRecording();return;}
+    current.action='edit';status.textContent=t('Завершаю распознавание…');
+    try{const text=await upload(current,blob,blob.name);if(session!==current)return;append(current,text);complete(current);}
+    catch(error){if(session===current)explain(current,error.message);}
+  });
 
   function setPaused(paused) {
     const label = t(paused ? 'Продолжить диктовку' : 'Диктовать вопрос');
@@ -84,7 +107,7 @@ export function bindDictation(form, {onChange, onSend, showError, beforeStart}) 
     clearTimeout(current.deadline);
     clearInterval(current.clock);
     current.resources.abort();
-    if (current.recorder?.state === 'recording') current.recorder.stop();
+    if (current.recorder && current.recorder.state !== 'inactive') current.recorder.stop();
     current.recognizer?.abort();
     form.classList.remove('dictating');
     input.disabled = false;
@@ -111,7 +134,8 @@ export function bindDictation(form, {onChange, onSend, showError, beforeStart}) 
   }
 
   function append(current, text) {
-    current.phrase = text.trim();
+    current.phrase = typeof text==='string' ? text.trim() : '';
+    if(!current.phrase)return;
     if (current.action === 'pause') {
       // Insert the finished segment before any new typing, keeping edits and caret.
       const position = input.value.startsWith(current.draft) ? current.draft.length : input.value.length;
@@ -142,6 +166,7 @@ export function bindDictation(form, {onChange, onSend, showError, beforeStart}) 
     if (!session) return;
     const current = session;
     if (current.action) return;
+    if(!current.recorder && !current.recognizer){cancelRecording();return;}
     current.action = action;
     if (action === 'pause') {
       if (current.started) recordedMs += performance.now() - current.started;
@@ -165,7 +190,7 @@ export function bindDictation(form, {onChange, onSend, showError, beforeStart}) 
     if (session === current) current.deadline = setTimeout(() => {
       if (current.phrase) complete(current);
       else explain(current, 'Диктовка недоступна. Можно повторить запись или ввести текст.');
-    }, local ? 30000 : 6500);
+    }, server ? 55000 : 6500);
   }
 
   function listening(current) {
@@ -176,7 +201,7 @@ export function bindDictation(form, {onChange, onSend, showError, beforeStart}) 
       const segmentMs = performance.now() - current.started;
       const seconds = Math.floor((recordedMs + segmentMs) / 1000);
       elapsed.textContent = Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
-      if (local) confirm.disabled = segmentMs < 1000;
+      if (server) confirm.disabled = segmentMs < 1000;
     }, 200);
   }
 
@@ -189,17 +214,13 @@ export function bindDictation(form, {onChange, onSend, showError, beforeStart}) 
     recorder.addEventListener('stop', async () => {
       stream.getTracks().forEach(track => track.stop());
       try {
-        const url = new URL(endpoint, location.href);
-        url.searchParams.set('language', locale());
-        const result = await fetch(url, {method:'POST', body:new Blob(chunks,{type:format}), signal});
-        if (result.status === 422) return explain(current, 'Речь не слышна. Нажмите микрофон и повторите вопрос.');
-        if (!result.ok) throw Error('transcription unavailable');
-        const {text} = await result.json();
+        const ext=format.includes('mp4')?'m4a':format.includes('ogg')?'ogg':'webm';
+        const text=await upload(current,new Blob(chunks,{type:format}),'question.'+ext);
         if (signal.aborted) return;
         append(current, text);
         complete(current);
-      } catch {
-        explain(current, 'Диктовка недоступна. Можно повторить запись или ввести текст.');
+      } catch(error) {
+        explain(current, error.message || 'Диктовка недоступна. Можно повторить запись или ввести текст.');
       }
     }, {signal});
     recorder.start();
@@ -243,7 +264,7 @@ export function bindDictation(form, {onChange, onSend, showError, beforeStart}) 
 
   async function start() {
     if (session) return;
-    beforeStart();
+    if(beforeStart?.()===false)return;
     showError('');
     hint.hidden = true;
     const current = session = {resources:new AbortController(), draft:input.value, phrase:'', action:null};
@@ -259,16 +280,19 @@ export function bindDictation(form, {onChange, onSend, showError, beforeStart}) 
     canvas.getContext('2d')?.clearRect(0,0,canvas.width,canvas.height);
     cancel.focus();
     onChange();
+    if(server && (!format || !navigator.mediaDevices?.getUserMedia)) {
+      status.textContent=t('Загрузить запись');canvas.hidden=true;file.click();return;
+    }
     try {
       let stream;
       if (navigator.mediaDevices?.getUserMedia) {
-        stream = await navigator.mediaDevices.getUserMedia({audio:true});
+        stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
         const release = () => stream.getTracks().forEach(track => track.stop());
         if (signal.aborted) { release(); return; }
         signal.addEventListener('abort', release, {once:true});
         try { drawLevels(canvas, stream, signal); } catch { canvas.hidden = true; }
       }
-      if (local) record(current, stream);
+      if (server) record(current, stream);
       else recognize(current, stream?.getAudioTracks()[0]);
     } catch (error) {
       if (error.name === 'NotAllowedError') denied(current);

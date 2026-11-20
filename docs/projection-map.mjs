@@ -60,7 +60,20 @@ export async function mountProjectionMap(container, {
     keyboard: !site, maxBounds: [[56.235, 43.79], [56.425, 44.23]],
   });
   map.attributionControl.setPrefix(false);
-  if (!site) L.control.zoom({position: 'topleft', zoomInTitle: t('Приблизить'), zoomOutTitle: t('Отдалить')}).addTo(map);
+  if (!site) {
+    const zoom = L.control.zoom({position: 'topleft', zoomInTitle: t('Приблизить'), zoomOutTitle: t('Отдалить')}).addTo(map);
+    for (const button of zoom.getContainer().querySelectorAll('a')) {
+      let release;
+      // Keep the pressed face visible after even the shortest tap.
+      button.addEventListener('click', () => {
+        if (button.getAttribute('aria-disabled') === 'true') return;
+        clearTimeout(release);
+        button.classList.add('zoom-pressed');
+        release = setTimeout(() => button.classList.remove('zoom-pressed'), 140);
+      }, {capture: true, signal});
+      signal.addEventListener('abort', () => clearTimeout(release), {once: true});
+    }
+  }
   L.imageOverlay('./assets/route-map.webp', [[56.300,43.935],[56.350,44.075]], {
     pane: 'tilePane', zIndex: 0,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',

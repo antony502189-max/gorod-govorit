@@ -1,7 +1,7 @@
 import { locale, t } from './i18n.mjs';
 
 const cameraHint = 'Наведите камеру на QR-код на экране проектора.';
-const systemCameraHint = 'Откройте приложение «Камера» на телефоне и наведите его на QR-код на экране проектора.';
+const systemCameraHint = 'Для сканирования камерой откройте приложение по HTTPS. На локальном HTTP браузер блокирует камеру.';
 const wrongCode = 'Отсканируйте QR-код с экрана проектора.';
 
 export function projectorQr(value) {
@@ -34,7 +34,6 @@ function bindScanner(dialog) {
   let generation = 0;
   let timer;
   let openStationChat;
-  let hasCurrentAdmission;
 
   function setStatus(text) {
     const translated = t(text);
@@ -52,10 +51,9 @@ function bindScanner(dialog) {
 
   function resetActions() {
     link.textContent = t('Открыть чат');
-    link.hidden = !hasCurrentAdmission;
-    link.toggleAttribute('data-flow-link', hasCurrentAdmission);
-    if (hasCurrentAdmission) link.href = '#popov';
-    else link.removeAttribute('href');
+    link.hidden = true;
+    link.removeAttribute('data-flow-link');
+    link.removeAttribute('href');
     camera.hidden = true;
   }
 
@@ -162,15 +160,15 @@ function bindScanner(dialog) {
     setStatus('Камера приостановлена. Включите её, чтобы продолжить сканирование.');
   });
 
-  return ({onStationCode, currentAdmission = false} = {}) => {
+  return ({onStationCode} = {}) => {
     if (dialog.open) return;
     openStationChat = onStationCode;
-    hasCurrentAdmission = currentAdmission;
+    resetActions();
     dialog.showModal();
     if (canUseCamera) void startCamera();
     else {
       resetActions();
-      setStatus(currentAdmission ? 'QR-код стенда уже открыт. Можно перейти в чат.' : systemCameraHint);
+      setStatus(systemCameraHint);
     }
   };
 }

@@ -19,16 +19,16 @@
 
 #mobileNav::before {
   position: absolute;
-  inset-inline-start: calc(5px + (100% - 10px) / 20);
-  inset-block-start: -1px;
-  width: calc((100% - 10px) / 10);
-  height: 2px;
-  border-radius: 3px;
-  background: var(--blue);
+  inset-block: var(--dock-padding);
+  inset-inline-start: var(--dock-padding);
+  width: calc((100% - 2 * var(--dock-padding)) / 3);
+  border-radius: 18px;
+  background: var(--glass);
+  box-shadow: inset 0 1px 3px white, 0 2px 7px #5189ac20;
   content: "";
   opacity: 0;
   pointer-events: none;
-  transform: translateX(calc(var(--nav-index, 0) * 200%));
+  transform: translateX(calc(var(--nav-index, 0) * 100%));
   transition: transform 260ms var(--motion-ease), opacity var(--motion-tap) ease;
 }
 #mobileNav[data-current]::before { opacity: 1; }

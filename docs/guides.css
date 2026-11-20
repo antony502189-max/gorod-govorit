@@ -221,9 +221,6 @@ body[data-page="guides"] main {
   z-index: 1;
 }
 @media (hover: hover) {
-  .guide-card:has(.guide-talk:hover) .guide-portrait :is(svg, img) {
-    transform: scale(1.045);
-  }
   .guide-talk:hover svg { translate: 3px 0; }
 }
 
@@ -251,6 +248,5 @@ body[data-page="guides"] main {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .guide-card:has(.guide-talk:hover) .guide-portrait :is(svg, img) { transform: none; }
   .guide-talk:hover svg { translate: none; }
 }

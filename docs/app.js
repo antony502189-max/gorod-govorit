@@ -4,7 +4,7 @@ import { AboutPage, AppHeader, AppNavigation, GuideCatalogue, GuidePage, MapPage
 import {chkalovGuide, gorodovoyGuide, mininGuide} from './historical-guides.mjs';
 import {projectorGuide, popovQuestions, answerPopov} from './popov-guide.mjs';
 import { openQrScanner } from './qr-scanner.mjs?v=guide-flow';
-import { enterStationRoute, hasCurrentStationAdmission, saveStationAdmission, StationConversation } from './station.mjs?v=guide-flow';
+import { enterStationRoute, saveStationAdmission, StationConversation } from './station.mjs?v=guide-flow';
 import { ConversationPage } from './conversation.mjs?v=guide-flow';
 import { projectionSites } from './projection-map.mjs?v=guide-flow';
 import {cityPhotos} from './city-photos.mjs';
@@ -69,7 +69,7 @@ function save({quiet=false}={}){
 function event(type,value='',guideId=state.selected){state.events.push({type,value:String(value).slice(0,100),guide:guideId,at:new Date().toISOString()});state.events=state.events.slice(-200);}
 function guide(){return state.guides.find(g=>g.id===state.selected)||state.guides[0];}
 const featuredGorky=defaultGuides.find(g=>g.id==='gorky');
-const archiveGuides=[projectorGuide,chkalovGuide,mininGuide,gorodovoyGuide];
+const archiveGuides=[projectorGuide,mininGuide,chkalovGuide,gorodovoyGuide];
 const fixedGuides=new Map([featuredGorky,...archiveGuides].map(g=>[g.id,g]));
 function publicGuides(){
  return [state.guides.find(g=>g.id==='gorky')||featuredGorky,...archiveGuides];
@@ -236,7 +236,7 @@ function render(){
  $('#studioStatusSlot')?.append(workspaceStatus);
  if(navigating) {
   window.scrollTo(0,page==='home'?libraryScroll:page==='map'?mapScroll:0);
-  const focus=page==='guide' ? $(previous==='chat'?'.guide-detail-action a':'#guide-detail-title') : page==='home'&&previous==='guide'
+  const focus=page==='guide' ? $(previous==='chat'?'.guide-detail-action button':'#guide-detail-title') : page==='home'&&previous==='guide'
     ? $(`[data-guide="${lastHomeGuide}"] .guide-card-open`) : null;
   if (focus) focus.focus({preventScroll:true});
   else if (previous && !restoringMapFocus) main.focus({preventScroll:true});
@@ -264,7 +264,8 @@ function pageView(page, profile) {
   case 'map':
    return h(MapPage, {key, memory:mapMemory, onChoose:id=>navigateFlow('#guide/'+id)});
   case 'guide':
-   return h(GuidePage, {key, guide:localizedGuide(profile), site:projectionSites.find(site=>site.id===profile.id), back});
+   return h(GuidePage, {key, guide:localizedGuide(profile), site:projectionSites.find(site=>site.id===profile.id),
+    back, onScan: openProjectorScanner});
   case 'about':
    return h(AboutPage, {key});
   case 'screen':
@@ -512,9 +513,8 @@ async function askOnScreen(e){
 }
 function speak(text){if(!('speechSynthesis'in window))return toast('Озвучка недоступна в этом браузере');speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=speechLocale();const v=speechSynthesis.getVoices().find(v=>v.lang.toLowerCase().split(/[-_]/)[0]===locale());if(v)u.voice=v;u.rate=guide().voice==='calm'?.9:1.02;u.onstart=()=>{document.body.classList.add('speaking');document.querySelectorAll('.portrait').forEach(p=>p.classList.add('talking'));};u.onend=u.onerror=()=>{document.body.classList.remove('speaking');document.querySelectorAll('.portrait').forEach(p=>p.classList.remove('talking'));};speechSynthesis.speak(u);}
 function openScreen(){window.open(location.pathname+'#screen','gorod-visitor');}
-function scanFromNavigation() {
+function openProjectorScanner() {
  openQrScanner(stationMode ? {
-  currentAdmission: hasCurrentStationAdmission(),
   onStationCode(code) {
    saveStationAdmission(code);
    navigateFlow('#popov');
@@ -534,10 +534,9 @@ function renderNavigation(page) {
   },
  }), header);
  const nav = $('#mobileNav');
- const section = page === 'guide' ? (history.state?.flowBack === '#map' ? 'map' : 'home') : page;
- nav.hidden = page === 'chat';
- renderVue(h(AppNavigation, {key:locale(), page:section, onScan: scanFromNavigation}), nav);
- highlightNavigation(nav, section);
+ nav.hidden = page === 'guide' || page === 'chat';
+ renderVue(h(AppNavigation, {key:locale(), page, onScan: openProjectorScanner}), nav);
+ highlightNavigation(nav, page);
 }
 
 function handleRouteChange(){
@@ -558,7 +557,7 @@ channel&&(channel.onmessage=receiveUpdate);
 window.addEventListener('beforeunload',e=>{if(dirty||Object.keys(drafts).length){e.preventDefault();e.returnValue='';}});
 
 applyPageLanguage();
-renderNavigation(location.hash.slice(1) || 'home');
+renderNavigation(location.hash.slice(1).split('/')[0] || 'home');
 renderVue(h('section', {class:'panel'}, [h('span', {class:'loader'}), ' '+t('Загружаем вашу рабочую область…')]), main);
 sync().then(render).catch(error => {
  renderVue(h('section', {class:'empty'}, [
