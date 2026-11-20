@@ -9,6 +9,7 @@ import { ConversationPage } from './conversation.mjs?v=guide-flow';
 import { projectionSites } from './projection-map.mjs?v=guide-flow';
 import {cityPhotos} from './city-photos.mjs';
 import {plainReply,renderReplyMarkdown} from './reply-markdown.mjs';
+import { mountPhotoViewer } from './photo-viewer.mjs';
 import {movePortrait,rememberPortrait,reveal,stopPortraitMotion} from './motion.mjs?v=guide-motion';
 import { MaterialEditor, StudioPage } from './studio.mjs?v=matching-gorky';
 import {request as api} from './storage.mjs?v=source-style';
@@ -105,23 +106,7 @@ function replyPhotoHtml(id) {
    <figcaption><span>${esc(t(photo.title))}</span><small><a href="${esc(photo.original)}" target="_blank" rel="noopener noreferrer">${esc(photo.author)}</a></small></figcaption>
  </figure>`;
 }
-const photoViewer = document.createElement('dialog');
-photoViewer.className = 'reply-photo-viewer';
-photoViewer.dataset.i18nLabel = 'Просмотр фотографии';
-photoViewer.innerHTML = `<button type="button" aria-label="Закрыть фото" data-i18n-label="Закрыть фото" autofocus>${icon('close')}</button><img alt="">`;
-document.body.append(photoViewer);
-photoViewer.querySelector('button').onclick = () => photoViewer.close();
-photoViewer.addEventListener('click', event => {
- if (event.target === photoViewer) photoViewer.close();
-});
-main.addEventListener('click', event => {
- const thumbnail = event.target.closest('.reply-photo-open')?.querySelector('img');
- if (!thumbnail || photoViewer.open) return;
- const image = photoViewer.querySelector('img');
- image.src = thumbnail.currentSrc || thumbnail.src;
- image.alt = thumbnail.alt;
- photoViewer.showModal();
-});
+const photoViewer = mountPhotoViewer(main);
 
 function replySources(reply) {
  const photo = cityPhotos.find(item => item.id === reply.photoId);

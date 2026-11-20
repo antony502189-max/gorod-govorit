@@ -563,26 +563,38 @@ body[data-page="chat"] main {
 .reply-photo-viewer {
   position: fixed;
   inset: 0;
-  width: fit-content;
-  max-width: calc(100vw - 24px);
-  max-height: calc(100dvh - 24px);
-  margin: auto;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 16px;
-  background: var(--text);
+  background: transparent;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 .reply-photo-viewer::backdrop { background: rgb(13 29 25 / 88%); }
-.reply-photo-viewer img {
-  display: block;
-  max-width: 100%;
-  max-height: calc(100dvh - 24px);
-  object-fit: contain;
-}
-.reply-photo-viewer button {
+.reply-photo-viewport {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+.reply-photo-viewport img {
+  position: absolute;
+  inset: 12px;
+  margin: auto;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 24px);
+  cursor: zoom-in;
+}
+.reply-photo-viewport.is-zoomed { cursor: grab; }
+.reply-photo-viewport.is-zoomed:active { cursor: grabbing; }
+.reply-photo-viewport.is-zoomed img { cursor: inherit; }
+.reply-photo-viewer button {
   display: grid;
   place-items: center;
   width: 44px;
@@ -592,8 +604,27 @@ body[data-page="chat"] main {
   border-radius: 50%;
   background: var(--white);
   color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+}
+.reply-photo-viewer button:disabled {
+  background: #e1e5e7;
+  color: #62696f;
+}
+.reply-photo-viewer .photo-close {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
 }
 .reply-photo-viewer button svg { width: 20px; height: 20px; }
+.photo-zoom-controls {
+  position: absolute;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
 
 .reply-photo > button.reply-photo-open { width: 100%; }
 .reply-markdown button.reply-photo-open img { margin: 0; }

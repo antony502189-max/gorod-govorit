@@ -36,6 +36,49 @@ try{
   assert.ok(await p.locator('body').evaluate(e=>e.classList.contains('keyboard-open')));assert.ok(!await p.locator('#mobileNav').isVisible());const b=await p.locator('#sendQuestion').boundingBox();assert.ok(b.y+b.height<=420);await p.screenshot({path:'qa/mobile/chat-keyboard-layout.png'});
   await p.evaluate(()=>{delete window.visualViewport.height;window.visualViewport.dispatchEvent(new Event('resize'));});
  });
+ await check('Chat photos zoom and pan independently of the page',async()=>{
+  await p.goto(base+'#chat/gorky');
+  await p.getByRole('button',{name:'Покажите фото кремля',exact:true}).click();
+  const thumbnail=p.locator('.reply-photo-open').first();
+  await thumbnail.click();
+  const viewer=p.getByRole('dialog',{name:'Просмотр фотографии'});
+  const photo=viewer.locator('img');
+  await photo.evaluate(img=>img.decode());
+  const scale=()=>photo.evaluate(img=>new DOMMatrix(getComputedStyle(img).transform).a);
+  const pageScale=await p.evaluate(()=>visualViewport.scale);
+  const fit=await photo.boundingBox();
+  assert.equal(await scale(),1);
+  assert.ok(fit.width<=390 && fit.height<=844);
+
+  const touch=await context.newCDPSession(p);
+  const center={x:Math.round(fit.x+fit.width/2),y:Math.round(fit.y+fit.height/2)};
+  const left={id:1,x:center.x-45,y:center.y};
+  const right={id:2,x:center.x+45,y:center.y};
+  await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[left,right]});
+  await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...left,x:left.x-60},{...right,x:right.x+60}]});
+  await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  assert.ok(await scale()>2);
+  const enlarged=await photo.boundingBox();
+  await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[center]});
+  await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...center,x:center.x+60}]});
+  await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  assert.ok((await photo.boundingBox()).x>enlarged.x);
+  assert.equal(await p.evaluate(()=>visualViewport.scale),pageScale);
+  await touch.detach();
+
+  await p.touchscreen.tap(center.x,center.y);
+  await p.touchscreen.tap(center.x,center.y);
+  assert.equal(await scale(),1);
+  await viewer.getByRole('button',{name:'Приблизить',exact:true}).tap();
+  assert.equal(await scale(),1.5);
+  await viewer.getByRole('button',{name:'Отдалить',exact:true}).tap();
+  assert.equal(await scale(),1);
+  await viewer.getByRole('button',{name:'Закрыть фото',exact:true}).tap();
+  await thumbnail.click();
+  assert.equal(await scale(),1);
+  await p.keyboard.press('Escape');
+  await viewer.waitFor({state:'hidden'});
+ });
  await check('The map shows the five projectors and old route links open it',async()=>{
   await p.goto(base+'#routes');
   await p.locator('.projection-map').waitFor();
