@@ -296,9 +296,9 @@ body[data-page="home"] .guide-collection { margin:0 16px 24px; }
   filter:drop-shadow(1px 2px 7px #152b4247);
 }
 .guide-card[data-guide="popov"] { --guide-city: url("./assets/chkalov.jpg"); --guide-city-position: 71% 39%; }
-.guide-card[data-guide="lobachevsky"] { --guide-city: url("./assets/zachatie.jpg"); --guide-city-position: 77% 37%; }
+.guide-card[data-guide="chkalov"] { --guide-city: url("./assets/chkalov.jpg"); --guide-city-position: 52% 55%; }
 .guide-card[data-guide="minin"] { --guide-city: url("./assets/city.jpg"); --guide-city-position: 33% 43%; }
-.guide-card[data-guide="dobrolyubov"] { --guide-city: url("./assets/church.jpg"); --guide-city-position: 63% 40%; }
+.guide-card[data-guide="gorodovoy"] { --guide-city: url("./assets/church.jpg"); --guide-city-position: 63% 40%; }
 
 .guide-library .guide-card[data-guide] {
   overflow:hidden;

@@ -18,7 +18,7 @@ try{
   await catalogue.waitFor();
   assert.equal(await page.locator('main > *').count(),1);
   assert.deepEqual(await catalogue.locator('h2').allTextContents(),[
-   'Максим Горький','Александр Попов','Николай Лобачевский','Кузьма Минин','Николай Добролюбов',
+   'Максим Горький','Александр Попов','Валерий Чкалов','Кузьма Минин','Городовой',
   ]);
   assert.equal(await catalogue.locator('.guide-card-open > .guide-open-icon').count(),5);
   assert.equal(await catalogue.locator('.guide-edit').count(),0);
@@ -40,7 +40,7 @@ try{
     const heights=await cards.evaluateAll(rows=>rows.map(row=>row.offsetHeight));
     assert.equal(heights.length,4);
     assert.equal(new Set(heights).size,1);
-    await preview.getByRole('link',{name:'Поговорить: Николай Лобачевский'}).click();
+    await preview.getByRole('link',{name:'Поговорить: Валерий Чкалов'}).click();
     const frame=preview.locator('.conversation');
     const chat=await frame.boundingBox();
     assert.ok(chat.width<=width);
@@ -73,12 +73,23 @@ try{
     assert.equal(await reply.count(),1);
    }
    await frame.locator('.conversation-back').click();
-   await tab.getByRole('link',{name:'Поговорить: Николай Лобачевский'}).click();
-   await tab.getByRole('button',{name:'Что такое неевклидова геометрия?'}).click();
-   await tab.locator('#messages').getByText(/1826 году/).waitFor();
+   await tab.getByRole('link',{name:'Поговорить: Валерий Чкалов'}).click();
+   await tab.getByRole('button',{name:'Как прошёл перелёт через Северный полюс?'}).click();
+   await tab.locator('#messages').getByText(/63 часа 16 минут/).waitFor();
    await tab.getByRole('button',{name:'Источники',exact:true}).click();
-   assert.match(await tab.getByRole('dialog',{name:'Источники'}).getByRole('link').getAttribute('href'),/^https:\/\/kpfu\.ru/);
+   assert.match(await tab.getByRole('dialog',{name:'Источники'}).getByRole('link').getAttribute('href'),/^https:\/\/www\.prlib\.ru/);
    assert.equal(await tab.locator('#messages').getByText(/срабатывает реле/).count(),0);
+   await tab.keyboard.press('Escape');
+   await tab.locator('.conversation-back').click();
+   await tab.getByRole('link',{name:'Поговорить: Городовой'}).click();
+   await tab.getByText(/собирательный образ полицейского/).waitFor();
+   await tab.getByRole('button',{name:'Кто такой городовой?'}).click();
+   await tab.locator('#messages').getByText(/дежурили на постах/).waitFor();
+   await tab.getByRole('button',{name:'Источники',exact:true}).click();
+   assert.match(await tab.getByRole('dialog',{name:'Источники'}).getByRole('link').getAttribute('href'),/^https:\/\/journals\.rcsi\.science/);
+   await tab.goto(base+'#dobrolyubov');
+   await tab.getByRole('link',{name:'Поговорить: Городовой'}).waitFor();
+   assert.equal(new URL(tab.url()).hash,'#home');
    await tab.goto(base+'popov.html');
    await frame.waitFor();
    await tab.goto(base+'popov.html?settings');

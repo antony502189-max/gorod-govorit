@@ -216,7 +216,7 @@ return function render(_ctx, _cache) {
   return (_openBlock(), _createElementBlock("article", _hoisted_1, [
     _cache[1] || (_cache[1] = _createElementVNode("h1", { id: "aboutTitle" }, "О проекте", -1 /* CACHED */)),
     _cache[2] || (_cache[2] = _createElementVNode("p", { class: "about-intro" }, "«Город говорит» знакомит с историей Нижнего Новгорода через разговор с цифровыми образами людей, связанных с городом.", -1 /* CACHED */)),
-    _cache[3] || (_cache[3] = _createElementVNode("p", null, "Спросите Кузьму Минина, как нижегородцы собрали ополчение, Александра Попова — как работал его радиоприёмник, а Николая Лобачевского — что такое неевклидова геометрия. Максим Горький и Николай Добролюбов расскажут о литературе.", -1 /* CACHED */)),
+    _cache[3] || (_cache[3] = _createElementVNode("p", null, "Спросите Попова о радиоприёмнике, Чкалова — о перелёте через Северный полюс, Минина — об ополчении. Городовой расскажет о старом Нижнем, а Максим Горький — о литературе.", -1 /* CACHED */)),
     _cache[4] || (_cache[4] = _createElementVNode("p", null, "Выберите собеседника на главной и напишите вопрос в чате.", -1 /* CACHED */)),
     _createElementVNode("a", _hoisted_2, [
       _cache[0] || (_cache[0] = _createTextVNode("Выбрать гида ", -1 /* CACHED */)),

@@ -1,7 +1,6 @@
 import { h, render as renderVue } from './vendor/vue.esm-browser.prod.mjs';
 import { AboutPage, AppHeader, AppNavigation, GuideCatalogue, MapPage, StatisticsPage, VisitorScreen, highlightNavigation } from './views.mjs?v=text-only';
-import {mininGuide,dobrolyubovGuide} from './historical-guides.mjs';
-import {lobachevskyGuide} from './lobachevsky-guide.mjs';
+import {chkalovGuide, gorodovoyGuide, mininGuide} from './historical-guides.mjs';
 import {projectorGuide, popovQuestions, answerPopov} from './popov-guide.mjs';
 import { enterStationRoute, StationConversation } from './station.mjs';
 import { ConversationPage } from './conversation.mjs?v=text-only';
@@ -63,7 +62,7 @@ function save({quiet=false}={}){
 function event(type,value='',guideId=state.selected){state.events.push({type,value:String(value).slice(0,100),guide:guideId,at:new Date().toISOString()});state.events=state.events.slice(-200);}
 function guide(){return state.guides.find(g=>g.id===state.selected)||state.guides[0];}
 const featuredGorky=defaultGuides.find(g=>g.id==='gorky');
-const archiveGuides=[projectorGuide,lobachevskyGuide,mininGuide,dobrolyubovGuide];
+const archiveGuides=[projectorGuide,chkalovGuide,mininGuide,gorodovoyGuide];
 const fixedGuides=new Map([featuredGorky,...archiveGuides].map(g=>[g.id,g]));
 function publicGuides(){
  return [state.guides.find(g=>g.id==='gorky')||featuredGorky,...archiveGuides];
@@ -178,7 +177,7 @@ let libraryScroll = 0;
 function render(){
  if(!ready)return;
  const previous=document.body.dataset.page;
- if(location.hash==='#guides') history.replaceState(history.state,'','#home');
+ if(['#guides','#lobachevsky','#dobrolyubov'].includes(location.hash)) history.replaceState(history.state,'','#home');
  if(location.hash==='#routes') history.replaceState(history.state,'','#map');
  const page=fixedGuides.has(location.hash.slice(1)) ? 'chat' : location.hash.slice(1)||'home';
  const navigating=page!==previous;

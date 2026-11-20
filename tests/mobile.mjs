@@ -46,7 +46,7 @@ try{
   await p.locator('#mobileNav [href="#home"]').click();
   await p.locator('.guide-library').waitFor();
   await p.locator('.guide-archive-portrait').evaluateAll(photos=>Promise.all(photos.map(photo=>photo.decode())));
-  assert.deepEqual(await p.locator('.guide-library h2').allTextContents(),['Мобильный гид','Александр Попов','Николай Лобачевский','Кузьма Минин','Николай Добролюбов']);
+  assert.deepEqual(await p.locator('.guide-library h2').allTextContents(),['Мобильный гид','Александр Попов','Валерий Чкалов','Кузьма Минин','Городовой']);
   assert.equal(await p.locator('#newGuide,.studio-invite').count(),0);
   assert.equal(await p.locator('main > *').count(),1);
   await p.goto(base+'#guides');
