@@ -1,22 +1,23 @@
 import { locale, t } from './i18n.mjs';
 
-const cameraHint = 'Наведите камеру на QR-код на экране Попова.';
-const systemCameraHint = 'Откройте приложение «Камера» на телефоне и наведите его на QR-код на экране Попова.';
-const wrongCode = 'Этот QR-код не ведёт к чату Попова. Попробуйте код с проектора.';
+const cameraHint = 'Наведите камеру на QR-код на экране проектора.';
+const systemCameraHint = 'Откройте приложение «Камера» на телефоне и наведите его на QR-код на экране проектора.';
+const wrongCode = 'Отсканируйте QR-код с экрана проектора.';
 
 export function projectorQr(value) {
   let url;
   try { url = new URL(value.trim()); }
   catch { return null; }
-  if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search
-      || url.pathname !== '/popov.html' || !/^#join=\d{1,12}\.[a-f0-9]{64}$/.test(url.hash)) return null;
-  return url;
+  if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search) return null;
+  const chat = ['/', '/popov.html'].includes(url.pathname) && /^#join=\d{1,12}\.[a-f0-9]{64}$/.test(url.hash);
+  const story = url.pathname === '/listen.html' && /^#guide=(?:minin|chkalov|gorky|popov|gorodovoy)&key=[A-Za-z0-9_-]{32}$/.test(url.hash);
+  return chat || story ? url : null;
 }
 
 let showScanner;
-export function openQrScanner() {
+export function openQrScanner(options) {
   showScanner ??= bindScanner(document.getElementById('qr-scanner'));
-  showScanner();
+  showScanner(options);
 }
 
 function bindScanner(dialog) {
@@ -32,6 +33,8 @@ function bindScanner(dialog) {
   let cameraActive = false;
   let generation = 0;
   let timer;
+  let openStationChat;
+  let hasCurrentAdmission;
 
   function setStatus(text) {
     const translated = t(text);
@@ -48,8 +51,11 @@ function bindScanner(dialog) {
   }
 
   function resetActions() {
-    link.hidden = true;
-    link.removeAttribute('href');
+    link.textContent = t('Открыть чат');
+    link.hidden = !hasCurrentAdmission;
+    link.toggleAttribute('data-flow-link', hasCurrentAdmission);
+    if (hasCurrentAdmission) link.href = '#popov';
+    else link.removeAttribute('href');
     camera.hidden = true;
   }
 
@@ -70,14 +76,23 @@ function bindScanner(dialog) {
       return false;
     }
     stopWork();
-    if (url.origin === location.origin) {
-      location.assign(url.href);
+    const story = url.pathname === '/listen.html';
+    if (!story && url.origin === location.origin && openStationChat) {
+      dialog.close();
+      openStationChat(new URLSearchParams(url.hash.slice(1)).get('join'));
     } else {
-      setStatus(t('QR-код распознан. Адрес проектора — {host}', {host:url.host}));
       const fragment = new URLSearchParams(url.hash.slice(1));
       fragment.set('lang', locale());
+      if (!story) url.pathname = '/popov.html';
       url.hash = fragment.toString();
+      if (url.origin === location.origin) {
+        location.assign(url.href);
+        return true;
+      }
+      setStatus(t('QR-код распознан. Адрес проектора — {host}', {host:url.host}));
+      link.textContent = t(url.pathname === '/listen.html' ? 'Выбрать язык рассказа' : 'Открыть чат');
       link.href = url.href;
+      link.removeAttribute('data-flow-link');
       link.hidden = false;
       link.focus();
     }
@@ -147,10 +162,15 @@ function bindScanner(dialog) {
     setStatus('Камера приостановлена. Включите её, чтобы продолжить сканирование.');
   });
 
-  return () => {
+  return ({onStationCode, currentAdmission = false} = {}) => {
     if (dialog.open) return;
+    openStationChat = onStationCode;
+    hasCurrentAdmission = currentAdmission;
     dialog.showModal();
     if (canUseCamera) void startCamera();
-    else setStatus(systemCameraHint);
+    else {
+      resetActions();
+      setStatus(currentAdmission ? 'QR-код стенда уже открыт. Можно перейти в чат.' : systemCameraHint);
+    }
   };
 }

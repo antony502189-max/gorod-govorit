@@ -42,6 +42,8 @@
   --city-art: url("./assets/illustrations/kremlin.webp");
   --phone-width: 480px;
   --type: LbchRoboto, Roboto, Arial, sans-serif;
+  --type-caption: .875rem;
+  --control-edge: #617794;
   --page-gutter: 16px;
   accent-color: var(--blue);
 }

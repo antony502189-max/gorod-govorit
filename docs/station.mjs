@@ -1,9 +1,9 @@
 import { locale, localizedGuide, setLocale, t } from './i18n.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from './vendor/vue.esm-browser.prod.mjs';
-import { AppIcon, PortraitImage } from './views.mjs';
+import { AppIcon, PortraitImage } from './views.mjs?v=guide-flow';
 import { popovQuestions, projectorGuide } from './popov-guide.mjs';
-import { sign } from './conversation.mjs?v=text-only';
-import { stationConversationRender } from './vue-renders.mjs';
+import { sign } from './conversation.mjs?v=guide-flow';
+import { stationConversationRender } from './vue-renders.mjs?v=guide-flow';
 
 const prefix = 'gorod-station-';
 const terminal = new Set(['finished', 'failed', 'cancelled']);
@@ -21,18 +21,30 @@ const storage = {
 const randomKey = () => Array.from(crypto.getRandomValues(new Uint32Array(4)),
   value => value.toString(16).padStart(8, '0')).join('');
 
+export function saveStationAdmission(code) {
+  if (code === storage.get('admission')) return;
+  storage.set('admission', code);
+  storage.set('token', '');
+  storage.set('pending', '');
+}
+
+function admissionExpiry(code) {
+  return (Number(code.split('.')[0]) + 1) * 120000;
+}
+
+export function hasCurrentStationAdmission() {
+  const admission = storage.get('admission');
+  return /^\d+\.[a-f\d]{64}$/.test(admission) && Date.now() < admissionExpiry(admission);
+}
+
 export function enterStationRoute() {
   const fragment = new URLSearchParams(location.hash.slice(1));
+  const legacyEntry = location.pathname.endsWith('/popov.html');
   if (fragment.has('join')) {
-    const code = fragment.get('join');
     if (fragment.has('lang')) setLocale(fragment.get('lang'));
-    if (code !== storage.get('admission')) {
-      storage.set('admission', code);
-      storage.set('token', '');
-      storage.set('pending', '');
-    }
-    history.replaceState(history.state, '', './#popov');
-  } else if (!location.hash && location.pathname.endsWith('/popov.html')) {
+    saveStationAdmission(fragment.get('join'));
+    history.replaceState(history.state, '', legacyEntry ? './#popov' : './#home');
+  } else if (!location.hash && legacyEntry) {
     history.replaceState(history.state, '', './#popov');
   }
 }
@@ -51,6 +63,7 @@ function turnStatus(turn) {
 }
 
 export const StationConversation = {
+  props: ['back'],
   components: { AppIcon, PortraitImage },
   render: stationConversationRender,
   setup() {
@@ -68,7 +81,7 @@ export const StationConversation = {
     const transcript = ref(null), input = ref(null), upload = ref(null);
     const clock = ref(Date.now());
     let serverOffset = 0;
-    let expiry = (Number(admission.split('.')[0]) + 1) * 120000;
+    let expiry = admissionExpiry(admission);
     const active = computed(() => ui.turns.some(turn => !terminal.has(turn.state)));
     const valid = computed(() => /^\d+\.[a-f\d]{64}$/.test(admission) && clock.value < expiry);
     const available = computed(() => ui.token && ui.online && valid.value && ui.remaining > 0 && !active.value);
@@ -304,7 +317,7 @@ export const StationConversation = {
   template: `<section class="conversation station-conversation" data-mode="text" data-guide="popov"
     :data-phase="active ? 'thinking' : 'ready'" :aria-label="t('Разговор с Поповым у проектора')">
     <header class="conversation-header">
-      <a href="#home" class="conversation-back round-control" :aria-label="t('К списку гидов')"><AppIcon name="caret" /></a>
+      <a :href="back" data-flow-back class="conversation-back round-control" :aria-label="t('Назад')"><AppIcon name="caret" /></a>
       <div class="conversation-avatar" aria-hidden="true">
         <div class="avatar-frame"><div class="avatar-image"><PortraitImage :guide="guide" use-archive /></div></div>
       </div>

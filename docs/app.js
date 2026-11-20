@@ -1,11 +1,12 @@
 import { applyPageLanguage, locale, localizedGuide, setLocale, speechLocale, t } from './i18n.mjs';
 import { h, render as renderVue } from './vendor/vue.esm-browser.prod.mjs';
-import { AboutPage, AppHeader, AppNavigation, GuideCatalogue, MapPage, StatisticsPage, VisitorScreen, highlightNavigation } from './views.mjs?v=text-only';
+import { AboutPage, AppHeader, AppNavigation, GuideCatalogue, GuidePage, MapPage, StatisticsPage, VisitorScreen, highlightNavigation } from './views.mjs?v=guide-flow';
 import {chkalovGuide, gorodovoyGuide, mininGuide} from './historical-guides.mjs';
 import {projectorGuide, popovQuestions, answerPopov} from './popov-guide.mjs';
-import { openQrScanner } from './qr-scanner.mjs?v=camera-qr';
-import { enterStationRoute, StationConversation } from './station.mjs';
-import { ConversationPage } from './conversation.mjs?v=text-only';
+import { openQrScanner } from './qr-scanner.mjs?v=guide-flow';
+import { enterStationRoute, hasCurrentStationAdmission, saveStationAdmission, StationConversation } from './station.mjs?v=guide-flow';
+import { ConversationPage } from './conversation.mjs?v=guide-flow';
+import { projectionSites } from './projection-map.mjs?v=guide-flow';
 import {cityPhotos} from './city-photos.mjs';
 import {plainReply,renderReplyMarkdown} from './reply-markdown.mjs';
 import {movePortrait,rememberPortrait,reveal,stopPortraitMotion} from './motion.mjs?v=guide-motion';
@@ -73,7 +74,11 @@ const fixedGuides=new Map([featuredGorky,...archiveGuides].map(g=>[g.id,g]));
 function publicGuides(){
  return [state.guides.find(g=>g.id==='gorky')||featuredGorky,...archiveGuides];
 }
-function chatGuide(){return fixedGuides.get(location.hash.slice(1))||guide();}
+function publicGuide(id){return publicGuides().find(g=>g.id===id);}
+function chatGuide(){
+ const route=location.hash.slice(1);
+ return (route.startsWith('chat/') ? publicGuide(route.slice(5)) : fixedGuides.get(route)) || guide();
+}
 function usesFixedGuide(g){return fixedGuides.get(g.id)===g;}
 function catalogueEntries() {
  return publicGuides().map(g => ({
@@ -81,7 +86,6 @@ function catalogueEntries() {
   name: t(g.name),
   spotlight: g.id === 'gorky',
   category: t(g.id === 'gorky' || g.id === 'minin' ? 'Народное ополчение' : g.tag?.trim()),
-  direct: usesFixedGuide(g),
  }));
 }
 
@@ -118,7 +122,6 @@ main.addEventListener('click', event => {
  image.alt = thumbnail.alt;
  photoViewer.showModal();
 });
-window.addEventListener('hashchange', () => photoViewer.close());
 
 function replySources(reply) {
  const photo = cityPhotos.find(item => item.id === reply.photoId);
@@ -148,7 +151,6 @@ sourcesViewer.querySelector('button').onclick = () => sourcesViewer.close();
 sourcesViewer.addEventListener('click', event => {
  if (event.target === sourcesViewer) sourcesViewer.close();
 });
-window.addEventListener('hashchange', () => sourcesViewer.close());
 
 function openReplySources(items) {
  if (sourcesViewer.open) return;
@@ -176,32 +178,69 @@ function navigateTo(target){
  if(location.hash==='#'+target)render();
  else location.hash=target;
 }
-async function choose(id,target='chat'){
+function navigateFlow(target){
+ if(location.hash===target)return;
+ const flowBack=location.hash||'#home';
+ history.pushState({flowBack},'',target);
+ handleRouteChange();
+}
+document.addEventListener('click', event => {
+ if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+ const link=event.target.closest('a[data-flow-link], a[data-flow-back]');
+ if(!link)return;
+ const target=link.hash;
+ if(link.hasAttribute('data-flow-link')){
+  event.preventDefault();
+  navigateFlow(target);
+ }else if(history.state?.flowBack===target){
+  event.preventDefault();
+  history.back();
+ }
+});
+async function chooseStudioGuide(id){
  captureDraft();studioTab='profile';state.selected=id;
- try{await save();navigateTo(target);}catch(e){toast(e.message);}
+ try{await save();navigateTo('studio');}catch(e){toast(e.message);}
 }
 let libraryScroll = 0;
+let mapScroll = 0;
+let lastHomeGuide;
+const mapMemory = {layer:'street'};
 function render(){
  if(!ready)return;
  const previous=document.body.dataset.page;
  if(['#guides','#lobachevsky','#dobrolyubov'].includes(location.hash)) history.replaceState(history.state,'','#home');
  if(location.hash==='#routes') history.replaceState(history.state,'','#map');
- const page=fixedGuides.has(location.hash.slice(1)) ? 'chat' : location.hash.slice(1)||'home';
+ const route=location.hash.slice(1);
+ const profile=route.startsWith('guide/') && publicGuide(route.slice(6));
+ const page=profile?'guide':fixedGuides.has(route)||route.startsWith('chat/')&&publicGuide(route.slice(5))?'chat'
+  :['map','studio','about','screen','analytics','chat'].includes(route)?route:'home';
  const navigating=page!==previous;
+ const restoringMapFocus = page === 'map' && mapMemory.focus;
  const studioPanel=$('#studioPanel')?.getAttribute('aria-labelledby');
  const enteringChat=previous==='home' && page==='chat';
  const returningToGuides=previous==='chat' && page==='home';
  const guidePortrait=()=>$('[data-portrait-for="' + CSS.escape(enteringChat ? chatGuide().id : main.dataset.chatGuide || state.selected) + '"] > img');
  const chatPortrait=()=>$('.conversation-avatar .avatar-image > img');
- if(enteringChat)libraryScroll=window.scrollY;
+ if(previous==='home'&&navigating)libraryScroll=window.scrollY;
+ if(previous==='home'&&profile)lastHomeGuide=profile.id;
+ if(previous==='map'&&navigating)mapScroll=window.scrollY;
  const before=enteringChat ? rememberPortrait(guidePortrait()) : returningToGuides ? rememberPortrait(chatPortrait()) : null;
  stopPortraitMotion();
  viewId++;askController?.abort();busy=false;
  document.body.dataset.page=page;
  if(main.contains(workspaceStatus))main.before(workspaceStatus);
- renderVue(pageView(page),main);
+ renderVue(pageView(page,profile),main);
+ const heading = main.querySelector('h1');
+ const sectionName = {map:t('Карта'),chat:t('Диалог с персонажем'),screen:'Экран посетителя'}[page];
+ document.title = [sectionName, heading?.textContent, t('Город говорит')].filter(Boolean).join(' · ');
  $('#studioStatusSlot')?.append(workspaceStatus);
- if(navigating)window.scrollTo(0,returningToGuides ? libraryScroll : 0);
+ if(navigating) {
+  window.scrollTo(0,page==='home'?libraryScroll:page==='map'?mapScroll:0);
+  const focus=page==='guide' ? $(previous==='chat'?'.guide-detail-action a':'#guide-detail-title') : page==='home'&&previous==='guide'
+    ? $(`[data-guide="${lastHomeGuide}"] .guide-card-open`) : null;
+  if (focus) focus.focus({preventScroll:true});
+  else if (previous && !restoringMapFocus) main.focus({preventScroll:true});
+ }
  renderNavigation(page);
  status();
  updateViewport();
@@ -216,13 +255,16 @@ function render(){
  }
 }
 function download(name,text,type='application/json'){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-function pageView(page) {
+function pageView(page, profile) {
  const key = viewId;
+ const back = history.state?.flowBack || '#home';
  switch (page) {
   case 'studio':
    return h(StudioPage, {key, guide: editGuide(), guides: state.guides, tab: studioTab, actions: studioActions});
   case 'map':
-   return h(MapPage, {key});
+   return h(MapPage, {key, memory:mapMemory, onChoose:id=>navigateFlow('#guide/'+id)});
+  case 'guide':
+   return h(GuidePage, {key, guide:localizedGuide(profile), site:projectionSites.find(site=>site.id===profile.id), back});
   case 'about':
    return h(AboutPage, {key});
   case 'screen':
@@ -243,9 +285,9 @@ function pageView(page) {
    const original = chatGuide();
    const guide = localizedGuide(original);
    main.dataset.chatGuide = guide.id;
-   if (stationMode && guide.id === 'popov') return h(StationConversation, {key});
+   if (stationMode && location.hash === '#popov') return h(StationConversation, {key, back});
    return h(ConversationPage, {
-    key, guide,
+    key, guide, back,
     questions: (original === projectorGuide ? popovQuestions : suggestions(original)).map(question => t(question)),
     binding: {
      guide,
@@ -260,7 +302,7 @@ function pageView(page) {
    });
   }
   default:
-   return h(GuideCatalogue, {key, entries: catalogueEntries(), onChoose: choose});
+   return h(GuideCatalogue, {key, entries: catalogueEntries()});
  }
 }
 
@@ -337,7 +379,7 @@ async function deleteGuide() {
 
 const studioActions = {
  captureDraft, saveGuide, uploadImage, resetImage, deleteGuide, openScreen, importProject,
- selectGuide: id => choose(id, 'studio'),
+ selectGuide: chooseStudioGuide,
  selectTab: selectStudioTab,
  tabKeys: studioTabKeys,
  previewChat: () => navigateTo('chat'),
@@ -367,6 +409,7 @@ function closeModal() {
  $('.topbar').inert = false;
  $('#mobileNav').inert = false;
  modalReturn?.focus();
+ modalReturn = null;
  if (remotePending) status();
 }
 
@@ -469,9 +512,18 @@ async function askOnScreen(e){
 }
 function speak(text){if(!('speechSynthesis'in window))return toast('Озвучка недоступна в этом браузере');speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=speechLocale();const v=speechSynthesis.getVoices().find(v=>v.lang.toLowerCase().split(/[-_]/)[0]===locale());if(v)u.voice=v;u.rate=guide().voice==='calm'?.9:1.02;u.onstart=()=>{document.body.classList.add('speaking');document.querySelectorAll('.portrait').forEach(p=>p.classList.add('talking'));};u.onend=u.onerror=()=>{document.body.classList.remove('speaking');document.querySelectorAll('.portrait').forEach(p=>p.classList.remove('talking'));};speechSynthesis.speak(u);}
 function openScreen(){window.open(location.pathname+'#screen','gorod-visitor');}
+function scanFromNavigation() {
+ openQrScanner(stationMode ? {
+  currentAdmission: hasCurrentStationAdmission(),
+  onStationCode(code) {
+   saveStationAdmission(code);
+   navigateFlow('#popov');
+  },
+ } : undefined);
+}
 function renderNavigation(page) {
  const header = $('.topbar');
- header.hidden = page === 'map';
+ header.hidden = ['map','guide','chat'].includes(page);
  if (!header.hidden) renderVue(h(AppHeader, {
   showLanguages: page === 'home',
   language: locale(),
@@ -482,11 +534,25 @@ function renderNavigation(page) {
   },
  }), header);
  const nav = $('#mobileNav');
- renderVue(h(AppNavigation, {key:locale(), page, onScan: openQrScanner}), nav);
- highlightNavigation(nav, page);
+ const section = page === 'guide' ? (history.state?.flowBack === '#map' ? 'map' : 'home') : page;
+ nav.hidden = page === 'chat';
+ renderVue(h(AppNavigation, {key:locale(), page:section, onScan: scanFromNavigation}), nav);
+ highlightNavigation(nav, section);
 }
 
-window.addEventListener('hashchange',()=>{if(stationMode){enterStationRoute();applyPageLanguage();}captureDraft();if(location.hash==='#studio')studioTab='profile';closeModal();document.body.classList.remove('speaking');window.speechSynthesis?.cancel();render();});
+function handleRouteChange(){
+ if(stationMode){enterStationRoute();applyPageLanguage();}
+ photoViewer.close();
+ sourcesViewer.close();
+ $('#qr-scanner').close();
+ captureDraft();
+ if(location.hash==='#studio')studioTab='profile';
+ closeModal();
+ document.body.classList.remove('speaking');
+ window.speechSynthesis?.cancel();
+ render();
+}
+window.addEventListener('hashchange',handleRouteChange);
 async function receiveUpdate(){remotePending=true;if(busy||pendingSaves||dirty||Object.keys(drafts).length||$('#docForm')){status();return;}const view=viewId;try{const j=await api('/api/state');if(busy||pendingSaves||dirty||Object.keys(drafts).length||$('#docForm')||view!==viewId)return;if(j.revision>revision){state=j.state;revision=j.revision;window.speechSynthesis?.cancel();document.body.classList.remove('speaking');render();}remotePending=false;status();}catch{}}
 channel&&(channel.onmessage=receiveUpdate);
 window.addEventListener('beforeunload',e=>{if(dirty||Object.keys(drafts).length){e.preventDefault();e.returnValue='';}});

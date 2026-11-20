@@ -146,7 +146,7 @@ const StudioPreview = {
     <div class="studio-preview-stage" :style="{ '--studio-preview-color': guide.color }"><GuidePortrait :guide="guide" extra="studio-portrait" /></div>
     <div class="studio-preview-content">
       <div class="studio-preview-identity">
-        <h3>{{ guide.name }}</h3>
+        <h2>{{ guide.name }}</h2>
         <p>{{ guide.role }}</p>
       </div>
       <blockquote class="studio-preview-greeting">{{ guide.greeting }}</blockquote>
@@ -168,7 +168,7 @@ export const StudioPage = {
   template: `<section class="guide-studio" aria-labelledby="studioTitle">
     <header class="studio-heading">
       <h1 id="studioTitle">Студия гида</h1>
-      <button type="button" class="studio-button studio-create" id="newGuide" @click="actions.newGuide" aria-label="Новый персонаж" title="Новый персонаж"><AppIcon name="plus" /><span>Новый гид</span></button>
+      <button type="button" class="studio-button studio-create" id="newGuide" @click="actions.newGuide" title="Новый гид"><AppIcon name="plus" /><span>Новый гид</span></button>
     </header>
     <div class="studio-toolbar">
       <div class="studio-picker">

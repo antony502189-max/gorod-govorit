@@ -122,15 +122,6 @@ body[data-page="guides"] main {
   min-width: 0;
   grid-area: profile;
 }
-.guide-title {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-.guide-title h2 {
-  flex: 1;
-  min-width: 0;
-}
 .guide-profile h2 {
   margin: 0;
   color: var(--library-ink);
@@ -138,32 +129,13 @@ body[data-page="guides"] main {
   letter-spacing: -.025em;
   overflow-wrap: anywhere;
 }
-.guide-profile p {
-  margin-top: 4px;
-  color: var(--library-muted);
-  font-size: .8125rem;
-  overflow-wrap: anywhere;
+.guide-caption {
+  margin: .375rem 0 0;
+  color: #253951;
+  font-size: .9375rem;
+  font-weight: 500;
   line-height: 1.4;
-}
-.guide-tag {
-  display: inline-block;
-  max-inline-size: 100%;
-  padding: 4px 9px;
-  border-radius: 20px;
-  background: var(--quiet);
-  color: var(--blue);
-  font-size: .6875rem;
-  font-weight: 650;
-  line-height: 1.35;
   overflow-wrap: anywhere;
-}
-.guide-title .guide-tag {
-  flex: none;
-  max-inline-size: 48%;
-  margin-top: 2px;
-  padding: 3px 8px;
-  font-size: .65625rem;
-  text-align: center;
 }
 .guide-profile-actions {
   grid-area: actions;
@@ -232,14 +204,6 @@ body[data-page="guides"] main {
   font-size: clamp(1.9rem, 5.8vw, 2.85rem);
   max-width: 11ch;
 }
-.guide-spotlight .guide-profile p {
-  margin-top: 8px;
-  font-size: .875rem;
-}
-.guide-spotlight .guide-tag {
-  margin-bottom: 9px;
-  background: var(--surface);
-}
 .guide-spotlight .guide-talk {
   border-color: var(--library-action);
   background: var(--library-action);
@@ -283,7 +247,6 @@ body[data-page="guides"] main {
     padding: 19px 13px 15px 16px;
   }
   .guide-card:not(.guide-spotlight) .guide-title h2 { font-size: 1.3125rem; }
-  .guide-title .guide-tag { max-inline-size: 44%; padding-inline: 6px; }
   .guide-spotlight .guide-portrait { margin-bottom: -15px; }
 }
 

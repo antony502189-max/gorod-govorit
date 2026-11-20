@@ -51,7 +51,7 @@ body[data-page="studio"] main {
   border-radius: 24px;
   background: #fff;
   color: var(--studio-accent);
-  font-size: .8125rem;
+  font-size: var(--type-caption);
   font-weight: 650;
   line-height: 1.3;
   text-align: center;
@@ -96,7 +96,7 @@ body[data-page="studio"] main {
 .guide-studio .studio-picker > label {
   grid-column: 1 / -1;
   margin: 0;
-  font-size: .8125rem;
+  font-size: var(--type-caption);
   color: var(--studio-muted);
   font-weight: 600;
 }
@@ -119,7 +119,7 @@ body[data-page="studio"] main {
   color: var(--studio-muted);
   background: transparent;
   border: 0;
-  font-size: .75rem;
+  font-size: var(--type-caption);
 }
 .guide-studio .workspace-status > span {
   min-width: 0;
@@ -141,7 +141,7 @@ body[data-page="studio"] main {
 .guide-studio .workspace-status #backupProject {
   flex: none;
   color: var(--studio-accent);
-  font-size: .75rem;
+  font-size: var(--type-caption);
   min-height: 44px;
 }
 
@@ -166,7 +166,7 @@ body[data-page="studio"] main {
   border-radius: 23px;
   background: transparent;
   color: var(--studio-muted);
-  font-size: .8125rem;
+  font-size: var(--type-caption);
   font-weight: 600;
   line-height: 1.25;
 }
@@ -181,7 +181,7 @@ body[data-page="studio"] main {
   border-radius: 10px;
   background: var(--quiet);
   color: var(--studio-accent);
-  font-size: .6875rem;
+  font-size: var(--type-caption);
   font-variant-numeric: tabular-nums;
 }
 
@@ -233,7 +233,7 @@ body[data-page="studio"] main {
 .studio-note,
 .studio-field small {
   color: var(--studio-muted);
-  font-size: .75rem;
+  font-size: var(--type-caption);
   line-height: 1.45;
 }
 .studio-photo-tools .studio-note { margin-top: 5px; }
@@ -262,7 +262,7 @@ body[data-page="studio"] main {
   padding: 0;
   background: transparent;
   color: var(--studio-accent);
-  font-size: .75rem;
+  font-size: var(--type-caption);
   text-align: left;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -282,7 +282,7 @@ body[data-page="studio"] main {
   min-width: 0;
   color: var(--studio-ink);
 }
-.studio-field > span { font-size: .8125rem; font-weight: 600; }
+.studio-field > span { font-size: var(--type-caption); font-weight: 600; }
 .studio-field :is(input, textarea, select),
 .studio-picker #guidePicker {
   min-width: 0;
@@ -293,7 +293,7 @@ body[data-page="studio"] main {
   border-radius: 11px;
   color: var(--studio-ink);
   background-color: var(--white);
-  font-size: 16px;
+  font-size: 1rem;
   caret-color: var(--studio-accent);
 }
 .studio-field input[type="color"] { padding: 5px 7px; }
@@ -373,18 +373,18 @@ body[data-page="studio"] main {
   margin-top: 5px;
   overflow: hidden;
   color: var(--studio-ink);
-  font-size: .8125rem;
+  font-size: var(--type-caption);
   line-height: 1.45;
 }
 .studio-material-content .studio-note { margin-top: 6px; overflow-wrap: anywhere; }
-.studio-material-edit { font-size: .75rem; padding-inline: 10px; }
+.studio-material-edit { font-size: var(--type-caption); padding-inline: 10px; }
 .studio-empty {
   padding: 16px;
   border-radius: 12px;
   background: var(--surface);
 }
 .studio-empty strong { font-size: .875rem; }
-.studio-empty p { margin-top: 4px; color: var(--studio-muted); font-size: .8125rem; }
+.studio-empty p { margin-top: 4px; color: var(--studio-muted); font-size: var(--type-caption); }
 
 .studio-preview {
   display: grid;
@@ -404,7 +404,7 @@ body[data-page="studio"] main {
   background: transparent;
 }
 .studio-preview-content { padding: 15px; }
-.studio-preview-identity h3 {
+.studio-preview-identity h2 {
   color: var(--studio-ink);
   font: 400 1.7rem / 1.12 LbchRoboto, system-ui, sans-serif;
   letter-spacing: -.028em;
@@ -413,7 +413,7 @@ body[data-page="studio"] main {
 .studio-preview-identity p {
   margin-top: 4px;
   color: var(--studio-muted);
-  font-size: .8125rem;
+  font-size: var(--type-caption);
   overflow-wrap: anywhere;
 }
 .studio-preview-greeting {
@@ -448,7 +448,7 @@ body[data-page="studio"] main {
   .studio-preview-content .studio-button {
     gap: 6px;
     padding-inline: 10px;
-    font-size: .75rem;
+    font-size: var(--type-caption);
   }
 }
 
@@ -457,6 +457,6 @@ body[data-page="studio"] main {
 @media (max-width: 350px) {
   .studio-heading h1 { font-size: 1.94rem; }
   .studio-create { padding-inline: 10px; }
-  .studio-tabs button { font-size: .75rem; }
+  .studio-tabs button { font-size: var(--type-caption); }
   .studio-knowledge-header h2 { font-size: 1.28rem; }
 }

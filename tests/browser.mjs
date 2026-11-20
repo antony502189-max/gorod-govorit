@@ -10,6 +10,13 @@ context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));page.on('pagee
 context.on('request',r=>{if(r.url().includes('/api/'))requests.push(r.url());});
 page.on('dialog',d=>d.accept());
 const saved=()=>page.locator('#workspaceStatus [role=status]').filter({hasText:'Все изменения сохранены'}).waitFor({state:'attached'});
+async function openGuideChat(tab, id) {
+  await tab.locator(`a[href="#guide/${id}"]`).click();
+  await tab.locator(`.guide-detail[data-guide="${id}"] .guide-detail-action a`).click();
+  const chat = tab.locator(`.conversation[data-guide="${id}"]`);
+  await chat.waitFor();
+  return chat;
+}
 async function check(name,fn){await fn();checks.push(name);console.log('PASS '+name);}
 try{
  await check('The home page loads just the five guides, their archive photos and fonts',async()=>{
@@ -27,7 +34,7 @@ try{
   await catalogue.locator('img').evaluateAll(images=>Promise.all(images.map(photo=>photo.decode())));
   await page.screenshot({path:'qa/home-desktop.png',fullPage:true});
  });
- await check('Source answer and refusal',async()=>{await page.goto(base+'#guides');await page.locator('[data-chat=gorky]').click();await page.locator('#question').fill('Какое ваше настоящее имя?');await page.locator('#askForm').press('Enter');await page.locator('#messages').getByText(/Пешкова/).waitFor();await page.getByRole('button',{name:'Источники',exact:true}).click();const sources=page.getByRole('dialog',{name:'Источники',exact:true});assert.match(await sources.getByRole('link',{name:/Музей Горького и Шаляпина/}).getAttribute('href'),/^https:/);await page.keyboard.press('Escape');await sources.waitFor({state:'hidden'});await saved();await page.locator('#question').fill('Какая температура на Венере?');await page.locator('#askForm').press('Enter');await page.locator('#messages').getByText(/нет достаточно/).waitFor();await saved();await page.screenshot({path:'qa/chat-desktop.png',fullPage:true});});
+ await check('Source answer and refusal',async()=>{await page.goto(base+'#guides');await openGuideChat(page, 'gorky');await page.locator('#question').fill('Какое ваше настоящее имя?');await page.locator('#askForm').press('Enter');await page.locator('#messages').getByText(/Пешкова/).waitFor();await page.getByRole('button',{name:'Источники',exact:true}).click();const sources=page.getByRole('dialog',{name:'Источники',exact:true});assert.match(await sources.getByRole('link',{name:/Музей Горького и Шаляпина/}).getAttribute('href'),/^https:/);await page.keyboard.press('Escape');await sources.waitFor({state:'hidden'});await saved();await page.locator('#question').fill('Какая температура на Венере?');await page.locator('#askForm').press('Enter');await page.locator('#messages').getByText(/нет достаточно/).waitFor();await saved();await page.screenshot({path:'qa/chat-desktop.png',fullPage:true});});
  await check('Compact guides align and the chat fits at each viewport',async()=>{
   const preview=await browser.newPage();
   try {
@@ -40,13 +47,13 @@ try{
     const heights=await cards.evaluateAll(rows=>rows.map(row=>row.offsetHeight));
     assert.equal(heights.length,4);
     assert.equal(new Set(heights).size,1);
-    await preview.getByRole('link',{name:'Поговорить: Валерий Чкалов'}).click();
-    const frame=preview.locator('.conversation');
+    const frame=await openGuideChat(preview, 'chkalov');
     const chat=await frame.boundingBox();
     assert.ok(chat.width<=width);
     assert.equal(chat.x, (width-chat.width)/2);
     assert.equal(await frame.locator('.conversation-modes,.conversation-voice,#voiceToggle').count(),0);
-    await preview.locator('.conversation-back').click();
+    await frame.locator('.conversation-back').click();
+    await preview.locator('.guide-detail .conversation-back').click();
     await cards.first().waitFor();
     await preview.locator('.moving-portrait,.portrait-in-motion').first().waitFor({state:'detached'});
    }
@@ -56,8 +63,7 @@ try{
   const tab=await browser.newPage({viewport:{width:390,height:844},isMobile:true});
   try {
    await tab.goto(base+'#guides');
-   await tab.getByRole('link',{name:'Поговорить: Александр Попов'}).click();
-   const frame=tab.locator('.conversation[data-guide="popov"]');
+   const frame=await openGuideChat(tab, 'popov');
    await frame.getByRole('heading',{name:'Александр Попов'}).waitFor();
    await frame.getByRole('button',{name:'Как работает приёмник?'}).click();
    const reply=frame.locator('.message .reply-markdown').filter({hasText:'срабатывает реле'});
@@ -73,7 +79,8 @@ try{
     assert.equal(await reply.count(),1);
    }
    await frame.locator('.conversation-back').click();
-   await tab.getByRole('link',{name:'Поговорить: Валерий Чкалов'}).click();
+   await tab.locator('.guide-detail .conversation-back').click();
+   await openGuideChat(tab, 'chkalov');
    await tab.getByRole('button',{name:'Как прошёл перелёт через Северный полюс?'}).click();
    await tab.locator('#messages').getByText(/63 часа 16 минут/).waitFor();
    await tab.getByRole('button',{name:'Источники',exact:true}).click();
@@ -81,14 +88,15 @@ try{
    assert.equal(await tab.locator('#messages').getByText(/срабатывает реле/).count(),0);
    await tab.keyboard.press('Escape');
    await tab.locator('.conversation-back').click();
-   await tab.getByRole('link',{name:'Поговорить: Городовой'}).click();
+   await tab.locator('.guide-detail .conversation-back').click();
+   await openGuideChat(tab, 'gorodovoy');
    await tab.getByText(/собирательный образ полицейского/).waitFor();
    await tab.getByRole('button',{name:'Кто такой городовой?'}).click();
    await tab.locator('#messages').getByText(/дежурили на постах/).waitFor();
    await tab.getByRole('button',{name:'Источники',exact:true}).click();
    assert.match(await tab.getByRole('dialog',{name:'Источники'}).getByRole('link').getAttribute('href'),/^https:\/\/journals\.rcsi\.science/);
    await tab.goto(base+'#dobrolyubov');
-   await tab.getByRole('link',{name:'Поговорить: Городовой'}).waitFor();
+   await tab.getByRole('link',{name:'О персонаже: Городовой'}).waitFor();
    assert.equal(new URL(tab.url()).hash,'#home');
    await tab.goto(base+'popov.html');
    await frame.waitFor();
@@ -112,10 +120,96 @@ try{
    await tab.getByRole('button',{name:'Кто вы?'}).click();
    await preview.waitFor();
    await tab.locator('.conversation-back').click();
-   await tab.getByRole('link',{name:'Поговорить: Александр Попов'}).click();
+   await openGuideChat(tab, 'popov');
    await tab.getByText('Меня зовут Александр Степанович Попов. Я занимался физикой и опытами с радиоволнами.').waitFor();
    assert.equal(await tab.locator('#messages [inert],.conversation-waiting').count(),0);
   } finally {await tab.close();}
+ });
+ await check('Dictation follows the microphone, preserves edits and sends only on confirmation', async () => {
+  const tab = await browser.newPage({viewport:{width:320,height:650}, reducedMotion:'no-preference'});
+  try {
+   // Exercise the native engine even when the preview has an offline model installed.
+   await tab.route(base, async route => {
+    const response = await route.fetch();
+    await route.fulfill({response, body:(await response.text()).replace(/<meta name="dictation-endpoint"[^>]*>/, '')});
+   });
+   await tab.addInitScript(() => {
+    Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {value:async () => {
+     const audio = new AudioContext();
+     const output = audio.createMediaStreamDestination();
+     const tone = audio.createOscillator();
+     tone.connect(output);
+     tone.start();
+     await audio.resume();
+     window.testTrack = output.stream.getAudioTracks()[0];
+     return output.stream;
+    }});
+    window.SpeechRecognition = class extends EventTarget {
+     start(track) {
+      if (track !== window.testTrack) throw Error('Wrong microphone track');
+      window.testRecognition = this;
+      this.dispatchEvent(new Event('audiostart'));
+     }
+     phrase(text) {
+      this.dispatchEvent(Object.assign(new Event('result'), {results:[[{transcript:text}]]}));
+     }
+     stop() {
+      this.phrase('Ваше настоящее имя?');
+      this.dispatchEvent(new Event('end'));
+     }
+     abort() {}
+    };
+   });
+   await tab.goto(base + '#chat/gorky');
+   const field = tab.getByRole('textbox', {name:'Ваш вопрос'});
+   const mic = tab.getByRole('button', {name:'Диктовать вопрос'});
+   const pause = tab.getByRole('button', {name:'Приостановить диктовку'});
+   await field.fill('Подскажите,');
+   await mic.click();
+   await tab.getByText('Слушаю…', {exact:true}).waitFor();
+   assert.equal(await field.isVisible(), false);
+   await tab.waitForFunction(() => {
+    const pixels = document.querySelector('.dictation-panel canvas').getContext('2d').getImageData(0, 0, 240, 4).data;
+    return pixels.some((value, i) => i % 4 === 3 && value > 0);
+   });
+   const cancel = tab.getByRole('button', {name:'Отменить запись'});
+   const send = tab.getByRole('button', {name:'Отправить вопрос'});
+   const [left, wave, right, arrow] = await Promise.all([cancel,tab.locator('.dictation-panel'),pause,send].map(el => el.boundingBox()));
+   assert.ok(left.x + left.width <= wave.x && wave.x + wave.width <= right.x && right.x + right.width <= arrow.x);
+   await tab.evaluate(() => testRecognition.phrase('ошибочный вопрос'));
+   await cancel.click();
+   assert.equal(await field.inputValue(), 'Подскажите,');
+   assert.equal(await tab.evaluate(() => testTrack.readyState), 'ended');
+   assert.equal(await tab.locator('.message.user').count(), 0);
+   await mic.click();
+   await tab.getByText('Слушаю…',{exact:true}).waitFor();
+   await tab.evaluate(() => { testRecognition.phrase('как'); testRecognition.phrase('как вас зовут?'); });
+   await pause.click();
+   assert.equal(await field.inputValue(), 'Подскажите, как вас зовут?');
+   assert.equal(await tab.evaluate(() => testTrack.readyState), 'ended');
+   assert.equal(await tab.locator('.message.user').count(), 0);
+   assert.equal(await field.evaluate(e => e === document.activeElement), true);
+   await field.fill('Хочу узнать:');
+   await tab.getByRole('button', {name:'Продолжить диктовку'}).click();
+   await tab.getByText('Слушаю…', {exact:true}).waitFor();
+   await tab.evaluate(() => testRecognition.phrase('Ваше имя'));
+   await tab.getByRole('button', {name:'Отправить вопрос'}).click();
+   await tab.getByText('Хочу узнать: Ваше настоящее имя?', {exact:true}).and(tab.locator('.message.user, .message.user *')).first().waitFor();
+   assert.equal(await tab.locator('.message.user').count(), 1);
+   assert.equal(await tab.evaluate(() => testTrack.readyState), 'ended');
+   await tab.getByRole('button', {name:'Источники',exact:true}).waitFor();
+   await mic.click();
+   await tab.getByText('Слушаю…',{exact:true}).waitFor();
+   await tab.evaluate(() => testRecognition.dispatchEvent(Object.assign(new Event('error'), {error:'no-speech'})));
+   await tab.getByRole('status').filter({hasText:'Речь не слышна'}).waitFor();
+   assert.equal(await tab.locator('#askError').isVisible(), false);
+   await mic.click();
+   await tab.getByText('Слушаю…',{exact:true}).waitFor();
+   await tab.evaluate(() => testRecognition.dispatchEvent(Object.assign(new Event('error'), {error:'not-allowed'})));
+   await tab.getByRole('alert').filter({hasText:'Доступ к микрофону закрыт'}).waitFor();
+   assert.equal(await field.isVisible(), true);
+   assert.equal(await tab.evaluate(() => testTrack.readyState), 'ended');
+  } finally { await tab.close(); }
  });
  await check('The text chat retains manual playback for individual answers',async()=>{
   const tab=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
@@ -150,7 +244,7 @@ try{
  await check('Keyboard skips to the current content and reaches a projector link',async()=>{
   const tab=await clean.newPage();
   try {
-   await tab.goto(base+'#map');
+   await tab.goto(base+'#map',{waitUntil:'domcontentloaded'});
    await tab.locator('.projection-pin').first().waitFor();
    await tab.keyboard.press('Tab');
    assert.equal(await tab.evaluate(()=>document.activeElement.className),'skip');
@@ -160,23 +254,26 @@ try{
    const pin=tab.locator('.projection-pin').first();
    await pin.focus();
    await tab.keyboard.press('Space');
-   await tab.locator('.projection-location:focus').waitFor();
-   await tab.keyboard.press('Tab');
-   assert.equal(await tab.evaluate(()=>document.activeElement.getAttribute('aria-label')),'Закрыть карточку');
-   await tab.keyboard.press('Tab');
-   assert.equal(await tab.evaluate(()=>document.activeElement.textContent),'Открыть в Яндекс Картах');
-   await tab.keyboard.press('Shift+Tab');
-   await tab.keyboard.press('Enter');
-   await tab.locator('.projection-location').waitFor({state:'detached'});
-   assert.ok(await pin.evaluate(el=>el===document.activeElement));
+   const profile = tab.locator('.guide-detail[data-guide="minin"]');
+   await profile.locator('h1:focus').waitFor();
+   await profile.getByRole('link', {name:'Открыть в Яндекс Картах'}).waitFor();
+   await profile.getByRole('link', {name:'Сканировать QR-код'}).click();
+   const chat = tab.locator('.conversation[data-guide="minin"]');
+   await chat.waitFor();
+   assert.equal(await tab.locator('#mobileNav').isVisible(), false);
+   await tab.goBack();
+   await profile.getByRole('link', {name:'Сканировать QR-код'}).waitFor();
+   await profile.getByRole('link', {name:'Назад'}).click();
+   await pin.and(tab.locator(':focus')).waitFor();
   } finally {await tab.close();}
  });
- await check('320 and 390px: all seven screens fit',async()=>{for(const width of [320,390]){await m.setViewportSize({width,height:844});for(const route of ['home','studio','chat','map','screen','about','analytics']){await m.goto(base+'#'+route);await m.locator('main').waitFor();if(route==='map')await m.locator('.projection-map').waitFor();else await m.locator('main h1:visible, main h2:visible').first().waitFor();await m.evaluate(()=>document.fonts.ready);assert.ok(await m.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),route+' overflow '+width);if(['home','chat','map','studio'].includes(route))await m.screenshot({path:`qa/${route}-${width}.png`,fullPage:true});}}});
+ await check('320 and 390px: all screens fit',async()=>{for(const width of [320,390]){await m.setViewportSize({width,height:844});for(const route of ['home','guide/popov','studio','chat','map','screen','about','analytics']){await m.goto(base+'#'+route);await m.locator('main').waitFor();if(route==='map')await m.locator('.projection-map').waitFor();else await m.locator('main h1:visible, main h2:visible').first().waitFor();await m.evaluate(()=>document.fonts.ready);assert.ok(await m.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),route+' overflow '+width);if(['home','chat','map','studio'].includes(route))await m.screenshot({path:`qa/${route}-${width}.png`,fullPage:true});}}});
  await check('Mobile bottom navigation and guide access',async()=>{
   await m.addInitScript(()=>{
    Object.defineProperty(navigator,'mediaDevices',{value:{
     getUserMedia:async options=>{
      window.qrCameraRequest=options;
+     window.qrCameraCount=(window.qrCameraCount||0)+1;
      throw new DOMException('Permission denied','NotAllowedError');
     },
    }});
@@ -200,27 +297,34 @@ try{
   assert.equal(await m.locator('main a[href="#studio"], main a[href="#analytics"], #importProject').count(),0);
   assert.equal(await m.locator('#workspaceStatus').isVisible(),false);
   await m.getByRole('link',{name:'Выбрать гида'}).click();
-  await m.getByRole('button',{name:'Поговорить: Максим Горький'}).click();
+  await openGuideChat(m, 'gorky');
   await m.getByRole('heading',{name:'Максим Горький'}).waitFor();
+  await scanner.waitFor({state:'hidden'});
+  assert.equal(await m.evaluate(()=>window.qrCameraCount), 1);
  });
  await check('Tourist languages persist and translate the catalogue, map and guide answers',async()=>{
   const tab=await browser.newPage({viewport:{width:320,height:740},isMobile:true,reducedMotion:'reduce'});
   try {
    await tab.goto(base);
    const picker=tab.locator('.language-picker');
-   assert.equal(await picker.inputValue(),'ru');
-   await picker.selectOption('en');
+   assert.equal(await picker.innerText(),'Русский');
+   await picker.focus();
+   await tab.keyboard.press('ArrowDown');
+   await tab.keyboard.press('ArrowDown');
+   await tab.keyboard.press('Enter');
    await tab.getByRole('heading',{name:'Valery Chkalov',exact:true}).waitFor();
    await tab.reload();
-   assert.equal(await picker.inputValue(),'en');
+   assert.equal(await picker.innerText(),'English');
    await tab.getByRole('link',{name:'Map',exact:true}).click();
    await tab.getByRole('button',{name:'Satellite',exact:true}).waitFor();
    await tab.locator('.projection-sites').getByRole('button',{name:/Maxim Gorky Museum Apartment/}).click();
-   await tab.getByText('19 Semashko Street').waitFor();
+   await tab.locator('.guide-detail').getByText('19 Semashko Street').waitFor();
    await tab.getByRole('link',{name:'Home',exact:true}).click();
-   await picker.selectOption('zh');
+   await picker.click();
+   await tab.getByRole('button',{name:'简体中文',exact:true}).click();
    assert.equal(await tab.locator('html').getAttribute('lang'),'zh-Hans');
    await tab.getByRole('link',{name:/瓦列里·契卡洛夫/}).click();
+   await tab.getByRole('link',{name:'扫描二维码'}).click();
    await tab.getByRole('button',{name:'您出生在哪里？',exact:true}).click();
    await tab.locator('#messages').getByText(/我出生在下诺夫哥罗德省/).waitFor();
    await tab.getByRole('button',{name:'资料来源',exact:true}).click();

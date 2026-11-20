@@ -49,15 +49,18 @@ const layers = {
   },
 };
 
-export async function mountProjectionMap(container, {onSelect, onTileStatus, signal}) {
+export async function mountProjectionMap(container, {
+  site, initialView, onViewChange, onSelect, onTileStatus = () => {}, signal,
+}) {
   const {default: L} = await import('./vendor/leaflet/leaflet.mjs');
   if (signal.aborted) return;
   const map = L.map(container, {
     minZoom: 11, maxZoom: 19, zoomSnap: .5, zoomControl: false,
-    scrollWheelZoom: false, maxBounds: [[56.235, 43.79], [56.425, 44.23]],
+    scrollWheelZoom: false, dragging: !site, touchZoom: !site, doubleClickZoom: !site,
+    keyboard: !site, maxBounds: [[56.235, 43.79], [56.425, 44.23]],
   });
   map.attributionControl.setPrefix(false);
-  L.control.zoom({position: 'topleft', zoomInTitle: t('Приблизить'), zoomOutTitle: t('Отдалить')}).addTo(map);
+  if (!site) L.control.zoom({position: 'topleft', zoomInTitle: t('Приблизить'), zoomOutTitle: t('Отдалить')}).addTo(map);
   L.imageOverlay('./assets/route-map.webp', [[56.300,43.935],[56.350,44.075]], {
     pane: 'tilePane', zIndex: 0,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -67,24 +70,37 @@ export async function mountProjectionMap(container, {onSelect, onTileStatus, sig
   function fitAll() {
     map.fitBounds(cityBounds, {paddingTopLeft: [40, 78], paddingBottomRight: [40, 43], maxZoom: 15, animate: false});
   }
-  fitAll();
+  if (site) map.setView(site.coords, 16);
+  else if (initialView) map.setView(initialView.center, initialView.zoom);
+  else fitAll();
+  if (onViewChange) {
+    map.on('moveend', () => onViewChange({center: map.getCenter(), zoom: map.getZoom()}));
+  }
 
-  const markers = projectionSites.map((site, index) => L.marker(site.coords, {
-    title: t(site.place) + ' · ' + t(site.guide),
-    icon: L.divIcon({className: 'projection-pin', html: String(index + 1), iconSize: [36,36], iconAnchor: [18,18]}),
-    riseOnHover: true,
-  }).addTo(map));
-  markers.forEach((marker, index) => {
-    const site = projectionSites[index];
+  const markers = (site ? [site] : projectionSites).map((point, index) => {
+    const title = t(point.place) + ' · ' + t(point.guide);
+    const marker = L.marker(point.coords, {
+      title,
+      icon: L.divIcon({
+        className: 'projection-pin',
+        html: '<img alt="" src="./assets/guide-portraits/' + point.id + '.webp">',
+        iconSize: [44,44], iconAnchor: [22,22],
+      }),
+      riseOnHover: true,
+      keyboard: !site, interactive: !site, autoPanOnFocus: false,
+    }).addTo(map);
     const element = marker.getElement();
-    element.setAttribute('aria-label', t(site.place) + ' · ' + t(site.guide));
-    element.setAttribute('aria-pressed', 'false');
-    marker.on('click', () => onSelect(index, element));
-    element.addEventListener('keydown', event => {
-      if (event.key !== ' ') return;
-      event.preventDefault();
-      if (!event.repeat) onSelect(index, element);
-    }, { signal });
+    element.dataset.site = point.id;
+    if (onSelect) {
+      element.setAttribute('aria-label', title);
+      marker.on('click', () => onSelect(index));
+      element.addEventListener('keydown', event => {
+        if (event.key !== ' ') return;
+        event.preventDefault();
+        if (!event.repeat) onSelect(index);
+      }, { signal });
+    }
+    return marker;
   });
 
 
@@ -123,14 +139,14 @@ export async function mountProjectionMap(container, {onSelect, onTileStatus, sig
     map.remove();
   }, {once:true});
   return {
-    fitAll, setLayer,
-    select(index) {
-      markers.forEach((marker, position) => {
-        const selected = position === index;
+    setLayer,
+    highlight(id) {
+      markers.forEach(marker => {
+        const element = marker.getElement();
+        const selected = element.dataset.site === id;
         marker.setZIndexOffset(selected ? 300 : 0);
-        marker.getElement()?.setAttribute('aria-pressed', String(selected));
+        element.classList.toggle('is-current', selected);
       });
-      if (index !== null) map.panInside(projectionSites[index].coords, {padding: [43,76], animate: false});
     },
   };
 }

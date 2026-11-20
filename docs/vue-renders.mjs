@@ -18,14 +18,23 @@ return function render(_ctx, _cache) {
 })(Vue);
 
 export const appHeaderRender = (Vue => {
-const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, createCommentVNode: _createCommentVNode } = Vue
+const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, resolveComponent: _resolveComponent, createVNode: _createVNode, createCommentVNode: _createCommentVNode } = Vue
 
 const _hoisted_1 = ["aria-label"]
 const _hoisted_2 = { class: "brand-light" }
-const _hoisted_3 = ["aria-label", "value", "onChange"]
-const _hoisted_4 = ["value", "lang"]
+const _hoisted_3 = ["onKeydown"]
+const _hoisted_4 = ["aria-label"]
+const _hoisted_5 = ["aria-label"]
+const _hoisted_6 = ["lang", "aria-pressed", "onClick"]
+const _hoisted_7 = {
+  key: 0,
+  class: "language-check",
+  "aria-hidden": "true"
+}
 
 return function render(_ctx, _cache) {
+  const _component_AppIcon = _resolveComponent("AppIcon")
+
   return (_openBlock(), _createElementBlock(_Fragment, null, [
     _createElementVNode("a", {
       href: "#home",
@@ -52,21 +61,65 @@ return function render(_ctx, _cache) {
       ])
     ], 8 /* PROPS */, _hoisted_1),
     (_ctx.showLanguages)
-      ? (_openBlock(), _createElementBlock("select", {
+      ? (_openBlock(), _createElementBlock("details", {
           key: 0,
-          name: "language",
-          class: "language-picker",
-          "aria-label": _ctx.t('Язык приложения'),
-          value: _ctx.language,
-          onChange: $event => (_ctx.$emit('language', $event.target.value))
+          ref: "menu",
+          class: "language-menu",
+          onKeydown: _ctx.keys
         }, [
-          (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.languages, (item) => {
-            return (_openBlock(), _createElementBlock("option", {
-              key: item.id,
-              value: item.id,
-              lang: item.tag
-            }, _toDisplayString(item.name), 9 /* TEXT, PROPS */, _hoisted_4))
-          }), 128 /* KEYED_FRAGMENT */))
+          _createElementVNode("summary", {
+            class: "language-picker",
+            "aria-label": _ctx.t('Язык приложения') + ': ' + _ctx.languages.find(item => item.id === _ctx.language).name
+          }, [
+            _cache[1] || (_cache[1] = _createElementVNode("svg", {
+              class: "language-globe",
+              viewBox: "0 0 24 24",
+              "aria-hidden": "true"
+            }, [
+              _createElementVNode("circle", {
+                cx: "12",
+                cy: "12",
+                r: "9"
+              }),
+              _createElementVNode("ellipse", {
+                cx: "12",
+                cy: "12",
+                rx: "4",
+                ry: "9"
+              }),
+              _createElementVNode("path", { d: "M3 12h18" })
+            ], -1 /* CACHED */)),
+            _createElementVNode("span", null, _toDisplayString(_ctx.languages.find(item => item.id === _ctx.language).name), 1 /* TEXT */),
+            _cache[2] || (_cache[2] = _createElementVNode("svg", {
+              class: "language-chevron",
+              viewBox: "0 0 16 16",
+              "aria-hidden": "true"
+            }, [
+              _createElementVNode("path", { d: "m4 6 4 4 4-4" })
+            ], -1 /* CACHED */))
+          ], 8 /* PROPS */, _hoisted_4),
+          _createElementVNode("div", {
+            class: "language-options",
+            role: "group",
+            "aria-label": _ctx.t('Язык приложения')
+          }, [
+            (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.languages, (item) => {
+              return (_openBlock(), _createElementBlock("button", {
+                key: item.id,
+                type: "button",
+                lang: item.tag,
+                "aria-pressed": item.id === _ctx.language,
+                onClick: $event => (_ctx.choose(item.id))
+              }, [
+                _createTextVNode(_toDisplayString(item.name), 1 /* TEXT */),
+                (item.id === _ctx.language)
+                  ? (_openBlock(), _createElementBlock("span", _hoisted_7, [
+                      _createVNode(_component_AppIcon, { name: "check" })
+                    ]))
+                  : _createCommentVNode("v-if", true)
+              ], 8 /* PROPS */, _hoisted_6))
+            }), 128 /* KEYED_FRAGMENT */))
+          ], 8 /* PROPS */, _hoisted_5)
         ], 40 /* PROPS, NEED_HYDRATION */, _hoisted_3))
       : _createCommentVNode("v-if", true)
   ], 64 /* STABLE_FRAGMENT */))
@@ -103,8 +156,8 @@ return function render(_ctx, _cache) {
             key: 1,
             href: '#' + section.route,
             "data-nav": section.route,
-            class: _normalizeClass({active: section.route === _ctx.page || (_ctx.page === 'chat' && section.route === 'home')}),
-            "aria-current": section.route === _ctx.page ? 'page' : (_ctx.page === 'chat' && section.route === 'home' ? 'location' : null)
+            class: _normalizeClass({active: section.route === _ctx.page}),
+            "aria-current": section.route === _ctx.page ? 'page' : null
           }, [
             _createVNode(_component_AppIcon, {
               name: section.icon
@@ -117,27 +170,24 @@ return function render(_ctx, _cache) {
 })(Vue);
 
 export const guideCardRender = (Vue => {
-const { toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createElementVNode: _createElementVNode, mergeProps: _mergeProps, resolveComponent: _resolveComponent, createVNode: _createVNode, resolveDynamicComponent: _resolveDynamicComponent, withCtx: _withCtx, createBlock: _createBlock, normalizeClass: _normalizeClass } = Vue
+const { toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, mergeProps: _mergeProps, resolveComponent: _resolveComponent, createVNode: _createVNode, normalizeClass: _normalizeClass } = Vue
 
 const _hoisted_1 = ["data-guide"]
 const _hoisted_2 = { class: "guide-profile" }
-const _hoisted_3 = {
+const _hoisted_3 = { class: "guide-title" }
+const _hoisted_4 = {
   key: 0,
-  class: "guide-tag"
+  class: "guide-caption"
 }
-const _hoisted_4 = { class: "guide-title" }
-const _hoisted_5 = {
-  key: 0,
-  class: "guide-tag"
-}
-const _hoisted_6 = ["data-portrait-for"]
-const _hoisted_7 = ["src", "loading", "fetchpriority"]
-const _hoisted_8 = {
+const _hoisted_5 = ["data-portrait-for"]
+const _hoisted_6 = ["src", "loading", "fetchpriority"]
+const _hoisted_7 = {
   key: 0,
   class: "guide-profile-actions",
   "aria-hidden": "true"
 }
-const _hoisted_9 = { class: "guide-talk" }
+const _hoisted_8 = { class: "guide-talk" }
+const _hoisted_9 = ["href", "aria-label"]
 const _hoisted_10 = {
   class: "guide-open-icon",
   "aria-hidden": "true"
@@ -151,13 +201,10 @@ return function render(_ctx, _cache) {
     class: _normalizeClass(['guide-card', _ctx.entry.spotlight ? 'guide-spotlight' : 'guide-compact'])
   }, [
     _createElementVNode("div", _hoisted_2, [
-      (_ctx.entry.spotlight && _ctx.entry.category)
-        ? (_openBlock(), _createElementBlock("span", _hoisted_3, _toDisplayString(_ctx.entry.category), 1 /* TEXT */))
-        : _createCommentVNode("v-if", true),
-      _createElementVNode("div", _hoisted_4, [
+      _createElementVNode("div", _hoisted_3, [
         _createElementVNode("h2", null, _toDisplayString(_ctx.entry.name), 1 /* TEXT */),
-        (!_ctx.entry.spotlight && _ctx.entry.category)
-          ? (_openBlock(), _createElementBlock("span", _hoisted_5, _toDisplayString(_ctx.entry.category), 1 /* TEXT */))
+        (_ctx.entry.category)
+          ? (_openBlock(), _createElementBlock("p", _hoisted_4, _toDisplayString(_ctx.entry.category), 1 /* TEXT */))
           : _createCommentVNode("v-if", true)
       ])
     ]),
@@ -174,28 +221,23 @@ return function render(_ctx, _cache) {
       }, _ctx.archiveSizes[_ctx.entry.id], {
         loading: _ctx.entry.spotlight ? 'eager' : 'lazy',
         fetchpriority: _ctx.entry.spotlight ? 'high' : null
-      }), null, 16 /* FULL_PROPS */, _hoisted_7)
-    ], 8 /* PROPS */, _hoisted_6),
+      }), null, 16 /* FULL_PROPS */, _hoisted_6)
+    ], 8 /* PROPS */, _hoisted_5),
     (_ctx.entry.spotlight)
-      ? (_openBlock(), _createElementBlock("div", _hoisted_8, [
-          _createElementVNode("span", _hoisted_9, _toDisplayString(_ctx.t('Поговорить')), 1 /* TEXT */)
+      ? (_openBlock(), _createElementBlock("div", _hoisted_7, [
+          _createElementVNode("span", _hoisted_8, _toDisplayString(_ctx.t('О персонаже')), 1 /* TEXT */)
         ]))
       : _createCommentVNode("v-if", true),
-    (_openBlock(), _createBlock(_resolveDynamicComponent(_ctx.entry.direct ? 'a' : 'button'), {
+    _createElementVNode("a", {
       class: "guide-card-open",
-      href: _ctx.entry.direct ? '#' + _ctx.entry.id : null,
-      type: _ctx.entry.direct ? null : 'button',
-      "data-chat": _ctx.entry.direct ? null : _ctx.entry.id,
-      "aria-label": _ctx.t('Поговорить: ') + _ctx.entry.name,
-      onClick: $event => (_ctx.entry.direct || _ctx.$emit('choose', _ctx.entry.id))
-    }, {
-      default: _withCtx(() => [
-        _createElementVNode("span", _hoisted_10, [
-          _createVNode(_component_AppIcon, { name: "arrow" })
-        ])
-      ]),
-      _: 1 /* STABLE */
-    }, 8 /* PROPS */, ["href", "type", "data-chat", "aria-label", "onClick"]))
+      href: '#guide/' + _ctx.entry.id,
+      "data-flow-link": "",
+      "aria-label": _ctx.t('О персонаже: {name}', {name: _ctx.entry.name})
+    }, [
+      _createElementVNode("span", _hoisted_10, [
+        _createVNode(_component_AppIcon, { name: "arrow" })
+      ])
+    ], 8 /* PROPS */, _hoisted_9)
   ], 10 /* CLASS, PROPS */, _hoisted_1))
 }
 })(Vue);
@@ -219,70 +261,145 @@ return function render(_ctx, _cache) {
   return (_openBlock(), _createElementBlock("section", _hoisted_1, [
     _createElementVNode("h1", _hoisted_2, _toDisplayString(_ctx.t('Гиды')), 1 /* TEXT */),
     _createVNode(_component_GuideCard, {
-      entry: _ctx.entries[0],
-      onChoose: $event => (_ctx.$emit('choose', $event))
-    }, null, 8 /* PROPS */, ["entry", "onChoose"]),
+      entry: _ctx.entries[0]
+    }, null, 8 /* PROPS */, ["entry"]),
     _createElementVNode("div", _hoisted_3, [
       (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.entries.slice(1), (entry) => {
         return (_openBlock(), _createBlock(_component_GuideCard, {
           key: entry.id,
-          entry: entry,
-          onChoose: $event => (_ctx.$emit('choose', $event))
-        }, null, 8 /* PROPS */, ["entry", "onChoose"]))
+          entry: entry
+        }, null, 8 /* PROPS */, ["entry"]))
       }), 128 /* KEYED_FRAGMENT */))
     ])
   ]))
 }
 })(Vue);
 
+export const guidePageRender = (Vue => {
+const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode } = Vue
+
+const _hoisted_1 = ["data-guide"]
+const _hoisted_2 = { class: "guide-detail-header" }
+const _hoisted_3 = ["href", "aria-label"]
+const _hoisted_4 = {
+  id: "guide-detail-title",
+  tabindex: "-1"
+}
+const _hoisted_5 = { class: "guide-detail-card" }
+const _hoisted_6 = { class: "guide-detail-portrait" }
+const _hoisted_7 = { class: "guide-detail-role" }
+const _hoisted_8 = { class: "guide-detail-action" }
+const _hoisted_9 = ["href"]
+const _hoisted_10 = {
+  key: 0,
+  class: "guide-detail-site",
+  "aria-labelledby": "guide-detail-place"
+}
+const _hoisted_11 = { class: "guide-detail-address" }
+const _hoisted_12 = { id: "guide-detail-place" }
+const _hoisted_13 = ["aria-label"]
+const _hoisted_14 = ["href"]
+
+return function render(_ctx, _cache) {
+  const _component_AppIcon = _resolveComponent("AppIcon")
+  const _component_PortraitImage = _resolveComponent("PortraitImage")
+
+  return (_openBlock(), _createElementBlock("article", {
+    class: "guide-detail",
+    "data-guide": _ctx.guide.id,
+    "aria-labelledby": "guide-detail-title"
+  }, [
+    _createElementVNode("header", _hoisted_2, [
+      _createElementVNode("a", {
+        href: _ctx.back,
+        "data-flow-back": "",
+        class: "conversation-back round-control",
+        "aria-label": _ctx.t('Назад')
+      }, [
+        _createVNode(_component_AppIcon, { name: "caret" })
+      ], 8 /* PROPS */, _hoisted_3),
+      _createElementVNode("h1", _hoisted_4, _toDisplayString(_ctx.guide.name), 1 /* TEXT */)
+    ]),
+    _createElementVNode("div", _hoisted_5, [
+      _createElementVNode("div", _hoisted_6, [
+        _createVNode(_component_PortraitImage, {
+          guide: _ctx.guide,
+          "use-archive": _ctx.guide.id !== 'gorky' || !_ctx.guide.image
+        }, null, 8 /* PROPS */, ["guide", "use-archive"])
+      ]),
+      _createElementVNode("p", _hoisted_7, _toDisplayString(_ctx.guide.role), 1 /* TEXT */),
+      _createElementVNode("p", null, _toDisplayString(_ctx.site ? _ctx.t(_ctx.site.story) : _ctx.guide.greeting), 1 /* TEXT */)
+    ]),
+    _createElementVNode("div", _hoisted_8, [
+      _createElementVNode("a", {
+        class: "button",
+        href: '#chat/' + _ctx.guide.id,
+        "data-flow-link": ""
+      }, [
+        _createVNode(_component_AppIcon, { name: "qr" }),
+        _createTextVNode(_toDisplayString(_ctx.t('Сканировать QR-код')), 1 /* TEXT */)
+      ], 8 /* PROPS */, _hoisted_9)
+    ]),
+    (_ctx.site)
+      ? (_openBlock(), _createElementBlock("section", _hoisted_10, [
+          _createElementVNode("div", _hoisted_11, [
+            _createElementVNode("h2", _hoisted_12, _toDisplayString(_ctx.t(_ctx.site.place)), 1 /* TEXT */),
+            _createElementVNode("p", null, _toDisplayString(_ctx.t(_ctx.site.location)), 1 /* TEXT */)
+          ]),
+          _createElementVNode("div", {
+            ref: "canvas",
+            class: "guide-detail-map",
+            role: "region",
+            "aria-label": _ctx.t('Карта точек проекции')
+          }, null, 8 /* PROPS */, _hoisted_13),
+          _createElementVNode("a", {
+            class: "text-link",
+            href: _ctx.openCoordinates(_ctx.site),
+            target: "_blank",
+            rel: "noopener"
+          }, [
+            _createTextVNode(_toDisplayString(_ctx.t('Открыть в Яндекс Картах')) + " ", 1 /* TEXT */),
+            _createVNode(_component_AppIcon, { name: "arrow" })
+          ], 8 /* PROPS */, _hoisted_14)
+        ]))
+      : _createCommentVNode("v-if", true)
+  ], 8 /* PROPS */, _hoisted_1))
+}
+})(Vue);
+
 export const mapPageRender = (Vue => {
-const { toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, resolveComponent: _resolveComponent, createVNode: _createVNode, createTextVNode: _createTextVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment } = Vue
+const { toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, resolveComponent: _resolveComponent, createVNode: _createVNode } = Vue
 
 const _hoisted_1 = {
   class: "projection-map",
   "aria-labelledby": "projection-map-title"
 }
-const _hoisted_2 = { class: "projection-map-heading" }
+const _hoisted_2 = { class: "visually-hidden" }
 const _hoisted_3 = { id: "projection-map-title" }
 const _hoisted_4 = { class: "projection-map-frame" }
 const _hoisted_5 = ["aria-label"]
 const _hoisted_6 = ["aria-label"]
 const _hoisted_7 = ["aria-pressed", "onClick"]
 const _hoisted_8 = ["aria-pressed", "onClick"]
-const _hoisted_9 = ["onClick"]
-const _hoisted_10 = {
+const _hoisted_9 = {
   key: 0,
   class: "projection-map-status",
   role: "status"
 }
-const _hoisted_11 = {
-  key: 1,
-  ref: "details",
-  tabindex: "-1",
-  class: "projection-location",
-  "aria-labelledby": "projection-location-title"
-}
-const _hoisted_12 = ["src"]
-const _hoisted_13 = { id: "projection-location-title" }
-const _hoisted_14 = ["aria-label", "onClick"]
-const _hoisted_15 = { class: "projection-location-address" }
-const _hoisted_16 = { class: "projection-location-actions" }
-const _hoisted_17 = ["href"]
-const _hoisted_18 = ["aria-label"]
-const _hoisted_19 = ["aria-pressed", "onClick"]
-const _hoisted_20 = {
+const _hoisted_10 = ["aria-label"]
+const _hoisted_11 = ["data-site", "onClick"]
+const _hoisted_12 = {
   class: "projection-site-index",
   "aria-hidden": "true"
 }
-const _hoisted_21 = { class: "projection-site-label" }
+const _hoisted_13 = { class: "projection-site-label" }
 
 return function render(_ctx, _cache) {
   const _component_AppIcon = _resolveComponent("AppIcon")
 
   return (_openBlock(), _createElementBlock("section", _hoisted_1, [
     _createElementVNode("header", _hoisted_2, [
-      _createElementVNode("h1", _hoisted_3, _toDisplayString(_ctx.t('Нижний Новгород')), 1 /* TEXT */),
-      _createElementVNode("p", null, _toDisplayString(_ctx.t('Предлагаемые точки проекции')), 1 /* TEXT */)
+      _createElementVNode("h1", _hoisted_3, _toDisplayString(_ctx.t('Нижний Новгород')), 1 /* TEXT */)
     ]),
     _createElementVNode("div", _hoisted_4, [
       _createElementVNode("div", {
@@ -306,57 +423,13 @@ return function render(_ctx, _cache) {
           "aria-pressed": _ctx.layer === 'satellite',
           onClick: $event => (_ctx.basemap('satellite'))
         }, _toDisplayString(_ctx.t('Спутник')), 9 /* TEXT, PROPS */, _hoisted_8)
-      ], 8 /* PROPS */, _hoisted_6),
-      (_ctx.ready)
-        ? (_openBlock(), _createElementBlock("button", {
-            key: 0,
-            type: "button",
-            class: "projection-map-reset",
-            onClick: _ctx.overview
-          }, [
-            _createVNode(_component_AppIcon, { name: "recenter" }),
-            _createTextVNode(" " + _toDisplayString(_ctx.t('Все точки')), 1 /* TEXT */)
-          ], 8 /* PROPS */, _hoisted_9))
-        : _createCommentVNode("v-if", true)
+      ], 8 /* PROPS */, _hoisted_6)
     ]),
     (_ctx.status)
-      ? (_openBlock(), _createElementBlock("p", _hoisted_10, _toDisplayString(_ctx.status), 1 /* TEXT */))
-      : _createCommentVNode("v-if", true),
-    (_ctx.selected)
-      ? (_openBlock(), _createElementBlock("article", _hoisted_11, [
-          _createElementVNode("header", null, [
-            _createElementVNode("img", {
-              src: _ctx.archivePortraitPath(_ctx.selected.id),
-              width: "58",
-              height: "60",
-              alt: ""
-            }, null, 8 /* PROPS */, _hoisted_12),
-            _createElementVNode("div", null, [
-              _createElementVNode("h2", _hoisted_13, _toDisplayString(_ctx.t(_ctx.selected.place)), 1 /* TEXT */),
-              _createElementVNode("p", null, _toDisplayString(_ctx.t(_ctx.selected.guide)), 1 /* TEXT */)
-            ]),
-            _createElementVNode("button", {
-              type: "button",
-              class: "iconbutton",
-              "aria-label": _ctx.t('Закрыть карточку'),
-              onClick: _ctx.closeDetails
-            }, [
-              _createVNode(_component_AppIcon, { name: "close" })
-            ], 8 /* PROPS */, _hoisted_14)
-          ]),
-          _createElementVNode("p", _hoisted_15, _toDisplayString(_ctx.t(_ctx.selected.location)), 1 /* TEXT */),
-          _createElementVNode("p", null, _toDisplayString(_ctx.t(_ctx.selected.story)), 1 /* TEXT */),
-          _createElementVNode("div", _hoisted_16, [
-            _createElementVNode("a", {
-              class: "button",
-              href: _ctx.openCoordinates(_ctx.selected),
-              target: "_blank",
-              rel: "noopener"
-            }, _toDisplayString(_ctx.t('Открыть в Яндекс Картах')), 9 /* TEXT, PROPS */, _hoisted_17)
-          ])
-        ], 512 /* NEED_PATCH */))
+      ? (_openBlock(), _createElementBlock("p", _hoisted_9, _toDisplayString(_ctx.status), 1 /* TEXT */))
       : _createCommentVNode("v-if", true),
     _createElementVNode("ul", {
+      ref: "list",
       class: "projection-sites",
       "aria-label": _ctx.t('Пять точек проекции')
     }, [
@@ -366,19 +439,19 @@ return function render(_ctx, _cache) {
         }, [
           _createElementVNode("button", {
             type: "button",
-            "aria-pressed": _ctx.selected?.id === site.id,
-            onClick: $event => (_ctx.select(index, $event.currentTarget))
+            "data-site": site.id,
+            onClick: $event => (_ctx.select(index, 'list'))
           }, [
-            _createElementVNode("span", _hoisted_20, _toDisplayString(index + 1), 1 /* TEXT */),
-            _createElementVNode("span", _hoisted_21, [
+            _createElementVNode("span", _hoisted_12, _toDisplayString(index + 1), 1 /* TEXT */),
+            _createElementVNode("span", _hoisted_13, [
               _createElementVNode("strong", null, _toDisplayString(_ctx.t(site.place)), 1 /* TEXT */),
               _createElementVNode("small", null, _toDisplayString(_ctx.t(site.guide)), 1 /* TEXT */)
             ]),
             _createVNode(_component_AppIcon, { name: "caret" })
-          ], 8 /* PROPS */, _hoisted_19)
+          ], 8 /* PROPS */, _hoisted_11)
         ]))
       }), 128 /* KEYED_FRAGMENT */))
-    ], 8 /* PROPS */, _hoisted_18)
+    ], 8 /* PROPS */, _hoisted_10)
   ]))
 }
 })(Vue);
@@ -404,7 +477,7 @@ return function render(_ctx, _cache) {
     _createElementVNode("h1", _hoisted_2, _toDisplayString(_ctx.t('О проекте')), 1 /* TEXT */),
     _createElementVNode("p", _hoisted_3, _toDisplayString(_ctx.t('«Город говорит» знакомит с историей Нижнего Новгорода через разговор с цифровыми образами людей, связанных с городом.')), 1 /* TEXT */),
     _createElementVNode("p", null, _toDisplayString(_ctx.t('Спросите Попова о радиоприёмнике, Чкалова — о перелёте через Северный полюс, Минина — об ополчении. Городовой расскажет о старом Нижнем, а Максим Горький — о литературе.')), 1 /* TEXT */),
-    _createElementVNode("p", null, _toDisplayString(_ctx.t('Выберите собеседника на главной и напишите вопрос в чате.')), 1 /* TEXT */),
+    _createElementVNode("p", null, _toDisplayString(_ctx.t('Выберите персонажа на главной или на карте, чтобы открыть его страницу.')), 1 /* TEXT */),
     _createElementVNode("a", _hoisted_4, [
       _createTextVNode(_toDisplayString(_ctx.t('Выбрать гида')) + " ", 1 /* TEXT */),
       _createVNode(_component_AppIcon, { name: "arrow" })
@@ -510,7 +583,7 @@ return function render(_ctx, _cache) {
       class: "error",
       role: "alert"
     }, null, -1 /* CACHED */)),
-    _cache[4] || (_cache[4] = _createElementVNode("label", { style: {"font-size":"13px","color":"#c7dedb"} }, [
+    _cache[4] || (_cache[4] = _createElementVNode("label", { class: "screen-voice-label" }, [
       _createElementVNode("input", {
         type: "checkbox",
         id: "voiceToggle",
@@ -911,7 +984,7 @@ return function render(_ctx, _cache) {
     ], 4 /* STYLE */),
     _createElementVNode("div", _hoisted_2, [
       _createElementVNode("div", _hoisted_3, [
-        _createElementVNode("h3", null, _toDisplayString(_ctx.guide.name), 1 /* TEXT */),
+        _createElementVNode("h2", null, _toDisplayString(_ctx.guide.name), 1 /* TEXT */),
         _createElementVNode("p", null, _toDisplayString(_ctx.guide.role), 1 /* TEXT */)
       ]),
       _createElementVNode("blockquote", _hoisted_4, _toDisplayString(_ctx.guide.greeting), 1 /* TEXT */),
@@ -981,8 +1054,7 @@ return function render(_ctx, _cache) {
         class: "studio-button studio-create",
         id: "newGuide",
         onClick: _ctx.actions.newGuide,
-        "aria-label": "Новый персонаж",
-        title: "Новый персонаж"
+        title: "Новый гид"
       }, [
         _createVNode(_component_AppIcon, { name: "plus" }),
         _cache[0] || (_cache[0] = _createElementVNode("span", null, "Новый гид", -1 /* CACHED */))
@@ -1220,11 +1292,11 @@ return function render(_ctx, _cache) {
 })(Vue);
 
 export const conversationPageRender = (Vue => {
-const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createBlock: _createBlock } = Vue
+const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode } = Vue
 
 const _hoisted_1 = ["data-look", "data-guide", "aria-label"]
 const _hoisted_2 = { class: "conversation-header" }
-const _hoisted_3 = ["aria-label", "title"]
+const _hoisted_3 = ["href", "aria-label"]
 const _hoisted_4 = {
   class: "conversation-avatar",
   "aria-hidden": "true"
@@ -1244,8 +1316,12 @@ const _hoisted_16 = {
   class: "conversation-form",
   id: "askForm"
 }
-const _hoisted_17 = ["aria-label", "placeholder"]
-const _hoisted_18 = ["aria-label", "title"]
+const _hoisted_17 = ["aria-label", "title"]
+const _hoisted_18 = ["aria-label", "placeholder"]
+const _hoisted_19 = ["aria-label", "title"]
+const _hoisted_20 = ["aria-label", "title"]
+const _hoisted_21 = ["aria-label", "title"]
+const _hoisted_22 = ["aria-label", "title"]
 
 return function render(_ctx, _cache) {
   const _component_AppIcon = _resolveComponent("AppIcon")
@@ -1263,10 +1339,10 @@ return function render(_ctx, _cache) {
   }, [
     _createElementVNode("header", _hoisted_2, [
       _createElementVNode("a", {
-        href: "#home",
+        href: _ctx.back,
+        "data-flow-back": "",
         class: "conversation-back round-control",
-        "aria-label": _ctx.t('К списку гидов'),
-        title: _ctx.t('К списку гидов')
+        "aria-label": _ctx.t('Назад')
       }, [
         _createVNode(_component_AppIcon, { name: "caret" })
       ], 8 /* PROPS */, _hoisted_3),
@@ -1275,7 +1351,7 @@ return function render(_ctx, _cache) {
           _createElementVNode("div", _hoisted_6, [
             _createVNode(_component_PortraitImage, {
               guide: _ctx.guide,
-              "use-archive": _ctx.guide.id === 'gorky'
+              "use-archive": !_ctx.guide.image && ['gorky','popov','chkalov','minin','gorodovoy'].includes(_ctx.guide.id)
             }, null, 8 /* PROPS */, ["guide", "use-archive"])
           ])
         ]),
@@ -1329,6 +1405,19 @@ return function render(_ctx, _cache) {
     ], 8 /* PROPS */, _hoisted_12),
     _createElementVNode("div", _hoisted_15, [
       _createElementVNode("form", _hoisted_16, [
+        (_ctx.canDictate)
+          ? (_openBlock(), _createElementBlock("button", {
+              key: 0,
+              type: "button",
+              class: "round-control conversation-dictate",
+              "aria-label": _ctx.t('Диктовать вопрос'),
+              title: _ctx.t('Диктовать вопрос')
+            }, [
+              _createVNode(_component_AppIcon, {
+                markup: _ctx.sign('mic')
+              }, null, 8 /* PROPS */, ["markup"])
+            ], 8 /* PROPS */, _hoisted_17))
+          : _createCommentVNode("v-if", true),
         _createElementVNode("input", {
           id: "question",
           name: "question",
@@ -1338,7 +1427,54 @@ return function render(_ctx, _cache) {
           required: "",
           autocomplete: "off",
           enterkeyhint: "send"
-        }, null, 8 /* PROPS */, _hoisted_17),
+        }, null, 8 /* PROPS */, _hoisted_18),
+        (_ctx.canDictate)
+          ? (_openBlock(), _createElementBlock(_Fragment, { key: 1 }, [
+              _createElementVNode("button", {
+                type: "button",
+                class: "round-control dictation-cancel",
+                "aria-label": _ctx.t('Отменить запись'),
+                title: _ctx.t('Отменить запись')
+              }, [
+                _createVNode(_component_AppIcon, {
+                  markup: _ctx.sign('cancel')
+                }, null, 8 /* PROPS */, ["markup"])
+              ], 8 /* PROPS */, _hoisted_19),
+              _cache[1] || (_cache[1] = _createElementVNode("div", { class: "dictation-panel" }, [
+                _createElementVNode("div", { class: "dictation-meta" }, [
+                  _createElementVNode("span", { role: "status" }),
+                  _createElementVNode("time", { "aria-hidden": "true" })
+                ]),
+                _createElementVNode("canvas", {
+                  width: "240",
+                  height: "38",
+                  "aria-hidden": "true"
+                }),
+                _createElementVNode("div", { class: "dictation-preview" })
+              ], -1 /* CACHED */)),
+              _createElementVNode("button", {
+                type: "button",
+                class: "round-control dictation-pause",
+                "aria-label": _ctx.t('Приостановить диктовку'),
+                title: _ctx.t('Приостановить диктовку')
+              }, [
+                _createVNode(_component_AppIcon, {
+                  markup: _ctx.sign('pause')
+                }, null, 8 /* PROPS */, ["markup"])
+              ], 8 /* PROPS */, _hoisted_20),
+              _createElementVNode("button", {
+                type: "button",
+                class: "round-control dictation-confirm",
+                "aria-label": _ctx.t('Отправить вопрос'),
+                title: _ctx.t('Отправить вопрос'),
+                disabled: ""
+              }, [
+                _createVNode(_component_AppIcon, {
+                  markup: _ctx.sign('send')
+                }, null, 8 /* PROPS */, ["markup"])
+              ], 8 /* PROPS */, _hoisted_21)
+            ], 64 /* STABLE_FRAGMENT */))
+          : _createCommentVNode("v-if", true),
         _createElementVNode("button", {
           type: "submit",
           class: "round-control conversation-send",
@@ -1350,9 +1486,14 @@ return function render(_ctx, _cache) {
           _createVNode(_component_AppIcon, {
             markup: _ctx.sign('send')
           }, null, 8 /* PROPS */, ["markup"])
-        ], 8 /* PROPS */, _hoisted_18)
+        ], 8 /* PROPS */, _hoisted_22)
       ]),
-      _cache[1] || (_cache[1] = _createElementVNode("p", {
+      _cache[2] || (_cache[2] = _createElementVNode("p", {
+        class: "dictation-hint",
+        role: "status",
+        hidden: ""
+      }, null, -1 /* CACHED */)),
+      _cache[3] || (_cache[3] = _createElementVNode("p", {
         id: "askError",
         class: "conversation-error",
         role: "alert",
@@ -1368,7 +1509,7 @@ const { resolveComponent: _resolveComponent, createVNode: _createVNode, createEl
 
 const _hoisted_1 = ["data-phase", "aria-label"]
 const _hoisted_2 = { class: "conversation-header" }
-const _hoisted_3 = ["aria-label"]
+const _hoisted_3 = ["href", "aria-label"]
 const _hoisted_4 = {
   class: "conversation-avatar",
   "aria-hidden": "true"
@@ -1451,9 +1592,10 @@ return function render(_ctx, _cache) {
   }, [
     _createElementVNode("header", _hoisted_2, [
       _createElementVNode("a", {
-        href: "#home",
+        href: _ctx.back,
+        "data-flow-back": "",
         class: "conversation-back round-control",
-        "aria-label": _ctx.t('К списку гидов')
+        "aria-label": _ctx.t('Назад')
       }, [
         _createVNode(_component_AppIcon, { name: "caret" })
       ], 8 /* PROPS */, _hoisted_3),
@@ -1811,8 +1953,21 @@ return function render(_ctx, _cache) {
             playsinline: "",
             preload: "none",
             poster: "./assets/popov.webp",
-            src: "./assets/popov-demo.mp4"
-          }, null, -1 /* CACHED */),
+            src: "./assets/popov-demo.mp4",
+            "aria-label": "Попов объясняет работу приёмника"
+          }, [
+            _createElementVNode("track", {
+              kind: "captions",
+              srclang: "ru",
+              label: "Русский",
+              src: "./assets/popov-demo.ru.vtt",
+              default: ""
+            })
+          ], -1 /* CACHED */),
+          _createElementVNode("details", null, [
+            _createElementVNode("summary", null, "Текст ролика"),
+            _createElementVNode("p", null, "Попов показан в полный рост и крупным планом. Он говорит: «Посмотрите на приёмник. Его антенна улавливает радиоволну. В ответ срабатывает реле, замыкается электрическая цепь, и мы слышим звонок».")
+          ], -1 /* CACHED */),
           _createElementVNode("p", null, "Для разговора у проектора отсканируйте QR-код на площадке.", -1 /* CACHED */)
         ]))], 8 /* PROPS */, _hoisted_14),
         _createElementVNode("div", {

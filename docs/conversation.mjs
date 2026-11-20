@@ -1,12 +1,15 @@
+import { bindDictation, canDictate } from './dictation.mjs';
 import { locale, speechLocale, t } from './i18n.mjs';
-import { conversationPageRender } from './vue-renders.mjs';
+import { conversationPageRender } from './vue-renders.mjs?v=guide-flow';
 import { createStaticVNode, onBeforeUnmount, onMounted, ref } from './vendor/vue.esm-browser.prod.mjs';
-import { AppIcon, PortraitImage } from './views.mjs?v=matching-gorky';
+import { AppIcon, PortraitImage } from './views.mjs?v=guide-flow';
 import { avatarModels } from './avatar-models.mjs';
 import { stopPortraitMotion } from './motion.mjs?v=guide-motion';
 import { plainReply } from './reply-markdown.mjs';
 
 const signs = {
+  cancel: '<path d="m6 6 12 12M18 6 6 18"/>',
+  pause: '<path d="M8 5v14m8-14v14" stroke-width="3.5"/>',
   mic: '<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0m-7 7v3m-3 0h6"/>',
   send: '<path d="M12 20V4m-6 6 6-6 6 6"/>',
   speaker: '<path d="M11 5 6 9H3v6h3l5 4V5Zm4 4a4 4 0 0 1 0 6m2-9a8 8 0 0 1 0 12"/>',
@@ -104,7 +107,7 @@ const StoredMessage = {
 };
 
 export const ConversationPage = {
-  props: ['guide', 'questions', 'binding'],
+  props: ['guide', 'questions', 'binding', 'back'],
   components: { AppIcon, PortraitImage, StoredMessage },
   setup(props) {
     const root = ref(null);
@@ -112,15 +115,15 @@ export const ConversationPage = {
     let controls;
     onMounted(() => { controls = bindConversation(root.value, props.binding); });
     onBeforeUnmount(() => controls?.destroy());
-    return { root, look, sign, t };
+    return { root, look, sign, t, canDictate };
   },
   render: conversationPageRender,
   template: `<section ref="root" class="conversation" data-mode="text" data-phase="ready" :data-look="look" :data-guide="guide.id" :aria-label="t('Диалог с персонажем')">
     <header class="conversation-header">
-      <a href="#home" class="conversation-back round-control" :aria-label="t('К списку гидов')" :title="t('К списку гидов')"><AppIcon name="caret" /></a>
+      <a :href="back" data-flow-back class="conversation-back round-control" :aria-label="t('Назад')"><AppIcon name="caret" /></a>
       <div class="conversation-avatar" aria-hidden="true">
         <div class="avatar-frame">
-          <div class="avatar-image"><PortraitImage :guide="guide" :use-archive="guide.id === 'gorky'" /></div>
+          <div class="avatar-image"><PortraitImage :guide="guide" :use-archive="!guide.image && ['gorky','popov','chkalov','minin','gorodovoy'].includes(guide.id)" /></div>
         </div>
         <span class="avatar-speaking"><i></i><i></i><i></i></span>
       </div>
@@ -139,9 +142,21 @@ export const ConversationPage = {
     </div>
     <div class="conversation-composer">
       <form class="conversation-form" id="askForm">
+        <button v-if="canDictate" type="button" class="round-control conversation-dictate" :aria-label="t('Диктовать вопрос')" :title="t('Диктовать вопрос')"><AppIcon :markup="sign('mic')" /></button>
         <input id="question" name="question" :aria-label="t('Ваш вопрос')" :placeholder="t('Напишите вопрос…')" maxlength="500" required autocomplete="off" enterkeyhint="send">
+        <template v-if="canDictate">
+          <button type="button" class="round-control dictation-cancel" :aria-label="t('Отменить запись')" :title="t('Отменить запись')"><AppIcon :markup="sign('cancel')" /></button>
+          <div class="dictation-panel">
+            <div class="dictation-meta"><span role="status"></span><time aria-hidden="true"></time></div>
+            <canvas width="240" height="38" aria-hidden="true"></canvas>
+            <div class="dictation-preview"></div>
+          </div>
+          <button type="button" class="round-control dictation-pause" :aria-label="t('Приостановить диктовку')" :title="t('Приостановить диктовку')"><AppIcon :markup="sign('pause')" /></button>
+          <button type="button" class="round-control dictation-confirm" :aria-label="t('Отправить вопрос')" :title="t('Отправить вопрос')" disabled><AppIcon :markup="sign('send')" /></button>
+        </template>
         <button type="submit" class="round-control conversation-send" id="sendQuestion" :aria-label="t('Отправить вопрос')" :title="t('Отправить вопрос')" disabled><AppIcon :markup="sign('send')" /></button>
       </form>
+      <p class="dictation-hint" role="status" hidden></p>
       <p id="askError" class="conversation-error" role="alert" hidden></p>
     </div>
   </section>`,
@@ -158,6 +173,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
   const form = $('#askForm');
   const questionInput = $('#question');
   const send = $('#sendQuestion');
+  const dictate = $('.conversation-dictate');
   const error = $('#askError');
   const avatarFrame = $('.avatar-frame');
   const topicButtons = [...root.querySelectorAll('[data-question]')];
@@ -166,6 +182,9 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
   let speaking = null;
   let sending = false;
   let model = null;
+  const dictation = dictate && bindDictation(form, {
+    onChange:updateControls, onSend:sendQuestion, showError, beforeStart:stopSpeech,
+  });
 
   const on = (target, name, fn) => target.addEventListener(name, fn, { signal });
 
@@ -180,7 +199,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
 
   function updateControls() {
     for (const button of turns.querySelectorAll('[data-read-reply]')) {
-      button.disabled = !supportsSpeech || sending;
+      button.disabled = !supportsSpeech || sending || Boolean(dictation?.active);
       const reading = speaking?.button === button;
       const label = reading ? t('Остановить озвучку') : t('Озвучить ответ');
       if (button.getAttribute('aria-label') !== label) {
@@ -190,8 +209,9 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
       }
     }
     root.dataset.phase = phase;
-    send.disabled = sending || !questionInput.value.trim();
-    for (const button of topicButtons) button.disabled = sending;
+    send.disabled = sending || Boolean(dictation?.active) || !questionInput.value.trim();
+    for (const button of topicButtons) button.disabled = sending || Boolean(dictation?.active);
+    if (dictate) dictate.disabled = sending || Boolean(dictation?.active);
   }
 
   function setPhase(next) {
@@ -333,6 +353,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
     stopSpeech();
     sending = true;
     showError('');
+    dictation?.resetPause();
     questionInput.value = '';
     const user = { user: true, text: question };
     turns.insertAdjacentHTML('beforeend', renderMessage(user));
@@ -401,7 +422,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
 
   on(form, 'submit', event => {
     event.preventDefault();
-    void sendQuestion(questionInput.value);
+    if (!dictation?.active) void sendQuestion(questionInput.value);
   });
   on(questionInput, 'input', () => {
     showError('');
@@ -410,9 +431,11 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
   for (const button of topicButtons) {
     on(button, 'click', () => void sendQuestion(button.dataset.question));
   }
+  on(window, 'pagehide', () => dictation?.close());
   on(document, 'visibilitychange', () => {
     root.classList.toggle('conversation-in-background', document.hidden);
     if (!document.hidden) return;
+    dictation?.close();
     stopSpeech();
   });
 
@@ -436,6 +459,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
   return {
     destroy() {
       listeners.abort();
+      dictation?.close();
       stopPortraitMotion();
       stopSpeech();
       model?.dispose();

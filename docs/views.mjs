@@ -1,8 +1,8 @@
-import { guidePortraitRender, appHeaderRender, appNavigationRender, guideCardRender, guideCatalogueRender, mapPageRender, aboutPageRender, visitorScreenRender, statisticsPageRender } from './vue-renders.mjs';
-import { createStaticVNode, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref } from './vendor/vue.esm-browser.prod.mjs';
+import { guidePortraitRender, appHeaderRender, appNavigationRender, guideCardRender, guideCatalogueRender, guidePageRender, mapPageRender, aboutPageRender, visitorScreenRender, statisticsPageRender } from './vue-renders.mjs?v=guide-flow';
+import { createStaticVNode, defineComponent, h, onBeforeUnmount, onMounted, ref } from './vendor/vue.esm-browser.prod.mjs';
 import { icon } from './icons.mjs?v=river-design';
 import { languages, t } from './i18n.mjs';
-import { mountProjectionMap, openCoordinates, projectionSites } from './projection-map.mjs';
+import { mountProjectionMap, openCoordinates, projectionSites } from './projection-map.mjs?v=guide-flow';
 
 const illustrations = { writer: 'gorky', guide: 'nika', fox: 'boris' };
 const archivePortraitPath = id => './assets/guide-portraits/' + id + '.webp';
@@ -52,7 +52,48 @@ export const GuidePortrait = {
 export const AppHeader = {
   props: ['showLanguages', 'language'],
   emits: ['language'],
-  setup() { return { languages, t }; },
+  components: { AppIcon },
+  setup(props, {emit}) {
+    const menu = ref(null);
+    function dismiss(restoreFocus = false) {
+      if (!menu.value?.open) return;
+      menu.value.open = false;
+      if (restoreFocus) menu.value.querySelector('summary').focus();
+    }
+    function outside(event) {
+      if (!menu.value?.contains(event.target)) dismiss();
+    }
+    function keys(event) {
+      if (event.key === 'Escape' && menu.value.open) {
+        event.preventDefault();
+        dismiss(true);
+        return;
+      }
+      if (!['ArrowDown','ArrowUp','Home','End'].includes(event.key)) return;
+      event.preventDefault();
+      menu.value.open = true;
+      const options = [...menu.value.querySelectorAll('button')];
+      const index = options.indexOf(document.activeElement);
+      let next = index < 0 ? languages.findIndex(item => item.id === props.language)
+        : (index + (event.key === 'ArrowUp' ? -1 : 1) + options.length) % options.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = options.length - 1;
+      options[next].focus();
+    }
+    function choose(id) {
+      dismiss(true);
+      emit('language', id);
+    }
+    onMounted(() => {
+      document.addEventListener('pointerdown', outside);
+      document.addEventListener('focusin', outside);
+    });
+    onBeforeUnmount(() => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('focusin', outside);
+    });
+    return { languages, menu, keys, choose, t };
+  },
   render: appHeaderRender,
   template: `
     <a href="#home" class="brand" :aria-label="t('Город говорит, главная')">
@@ -62,10 +103,19 @@ export const AppHeader = {
       </svg>
       <span>{{ t('Город говорит') }}<small class="brand-light">{{ t('Нижний Новгород') }}</small></span>
     </a>
-    <select v-if="showLanguages" name="language" class="language-picker" :aria-label="t('Язык приложения')" :value="language"
-      @change="$emit('language', $event.target.value)">
-      <option v-for="item in languages" :key="item.id" :value="item.id" :lang="item.tag">{{ item.name }}</option>
-    </select>
+    <details v-if="showLanguages" ref="menu" class="language-menu" @keydown="keys">
+      <summary class="language-picker" :aria-label="t('Язык приложения') + ': ' + languages.find(item => item.id === language).name">
+        <svg class="language-globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>
+        <span>{{ languages.find(item => item.id === language).name }}</span>
+        <svg class="language-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+      </summary>
+      <div class="language-options" role="group" :aria-label="t('Язык приложения')">
+        <button v-for="item in languages" :key="item.id" type="button" :lang="item.tag"
+          :aria-pressed="item.id === language" @click="choose(item.id)">
+          {{ item.name }}<span v-if="item.id === language" class="language-check" aria-hidden="true"><AppIcon name="check" /></span>
+        </button>
+      </div>
+    </details>
   `,
 };
 
@@ -88,8 +138,8 @@ export const AppNavigation = {
         <AppIcon :name="section.icon" />
       </button>
       <a v-else :href="'#' + section.route" :data-nav="section.route"
-         :class="{active: section.route === page || (page === 'chat' && section.route === 'home')}"
-         :aria-current="section.route === page ? 'page' : (page === 'chat' && section.route === 'home' ? 'location' : null)">
+         :class="{active: section.route === page}"
+         :aria-current="section.route === page ? 'page' : null">
         <AppIcon :name="section.icon" /><span>{{ t(section.label) }}</span>
       </a>
     </template>
@@ -97,115 +147,151 @@ export const AppNavigation = {
 };
 
 export function highlightNavigation(nav, page) {
-  const section = page === 'chat' ? 'home' : page;
-  const index = sections.findIndex(item => item.route === section);
+  const index = sections.findIndex(item => item.route === page);
   nav.toggleAttribute('data-current', index >= 0);
   if (index >= 0) nav.style.setProperty('--nav-index', index);
 }
 
 const GuideCard = {
   props: ['entry'],
-  emits: ['choose'],
   components: { AppIcon },
   setup() { return { archivePortraitPath, archiveSizes, t }; },
   render: guideCardRender,
   template: `
     <article :data-guide="entry.id" :class="['guide-card', entry.spotlight ? 'guide-spotlight' : 'guide-compact']">
       <div class="guide-profile">
-        <span v-if="entry.spotlight && entry.category" class="guide-tag">{{ entry.category }}</span>
         <div class="guide-title">
           <h2>{{ entry.name }}</h2>
-          <span v-if="!entry.spotlight && entry.category" class="guide-tag">{{ entry.category }}</span>
+          <p v-if="entry.category" class="guide-caption">{{ entry.category }}</p>
         </div>
       </div>
       <div aria-hidden="true" class="guide-portrait" :data-portrait-for="entry.id">
         <img class="guide-archive-portrait" :src="archivePortraitPath(entry.id)" alt="" decoding="async"
           v-bind="archiveSizes[entry.id]" :loading="entry.spotlight ? 'eager' : 'lazy'" :fetchpriority="entry.spotlight ? 'high' : null">
       </div>
-      <div v-if="entry.spotlight" class="guide-profile-actions" aria-hidden="true"><span class="guide-talk">{{ t('Поговорить') }}</span></div>
-      <component :is="entry.direct ? 'a' : 'button'" class="guide-card-open"
-          :href="entry.direct ? '#' + entry.id : null" :type="entry.direct ? null : 'button'"
-          :data-chat="entry.direct ? null : entry.id" :aria-label="t('Поговорить: ') + entry.name"
-          @click="entry.direct || $emit('choose', entry.id)">
+      <div v-if="entry.spotlight" class="guide-profile-actions" aria-hidden="true"><span class="guide-talk">{{ t('О персонаже') }}</span></div>
+      <a class="guide-card-open" :href="'#guide/' + entry.id" data-flow-link :aria-label="t('О персонаже: {name}', {name: entry.name})">
         <span class="guide-open-icon" aria-hidden="true"><AppIcon name="arrow" /></span>
-      </component>
+      </a>
     </article>
   `,
 };
 
 export const GuideCatalogue = {
   props: ['entries'],
-  emits: ['choose'],
   components: { GuideCard },
   setup() { return { t }; },
   render: guideCatalogueRender,
   template: `
     <section class="guide-library guide-collection" aria-labelledby="catalogue-title">
       <h1 id="catalogue-title" class="visually-hidden">{{ t('Гиды') }}</h1>
-      <GuideCard :entry="entries[0]" @choose="$emit('choose', $event)" />
+      <GuideCard :entry="entries[0]" />
       <div class="compact-guides">
-        <GuideCard v-for="entry in entries.slice(1)" :key="entry.id" :entry="entry" @choose="$emit('choose', $event)" />
+        <GuideCard v-for="entry in entries.slice(1)" :key="entry.id" :entry="entry" />
       </div>
     </section>
   `,
 };
 
+export const GuidePage = {
+  props: ['guide', 'site', 'back'],
+  components: { AppIcon, PortraitImage },
+  render: guidePageRender,
+  setup(props) {
+    const canvas = ref(null);
+    const lifecycle = new AbortController();
+    onMounted(async () => {
+      if (!props.site) return;
+      try {
+        const map = await mountProjectionMap(canvas.value, {site: props.site, signal: lifecycle.signal});
+        map?.setLayer('street');
+      } catch {
+        // The location and its external map link remain available.
+        if (canvas.value) canvas.value.hidden = true;
+      }
+    });
+    onBeforeUnmount(() => lifecycle.abort());
+    return {canvas, openCoordinates, t};
+  },
+  template: `
+    <article class="guide-detail" :data-guide="guide.id" aria-labelledby="guide-detail-title">
+      <header class="guide-detail-header">
+        <a :href="back" data-flow-back class="conversation-back round-control" :aria-label="t('Назад')"><AppIcon name="caret" /></a>
+        <h1 id="guide-detail-title" tabindex="-1">{{ guide.name }}</h1>
+      </header>
+      <div class="guide-detail-card">
+        <div class="guide-detail-portrait"><PortraitImage :guide="guide" :use-archive="guide.id !== 'gorky' || !guide.image" /></div>
+        <p class="guide-detail-role">{{ guide.role }}</p>
+        <p>{{ site ? t(site.story) : guide.greeting }}</p>
+      </div>
+      <div class="guide-detail-action">
+        <a class="button" :href="'#chat/' + guide.id" data-flow-link><AppIcon name="qr" />{{ t('Сканировать QR-код') }}</a>
+      </div>
+      <section v-if="site" class="guide-detail-site" aria-labelledby="guide-detail-place">
+        <div class="guide-detail-address">
+          <h2 id="guide-detail-place">{{ t(site.place) }}</h2>
+          <p>{{ t(site.location) }}</p>
+        </div>
+        <div ref="canvas" class="guide-detail-map" role="region" :aria-label="t('Карта точек проекции')"></div>
+        <a class="text-link" :href="openCoordinates(site)" target="_blank" rel="noopener">{{ t('Открыть в Яндекс Картах') }} <AppIcon name="arrow" /></a>
+      </section>
+    </article>
+  `,
+};
+
 export const MapPage = {
+  props: ['memory'],
+  emits: ['choose'],
   components: { AppIcon },
   render: mapPageRender,
-  setup() {
+  setup(props, {emit}) {
     const canvas = ref(null);
-    const details = ref(null);
-    const layer = ref('street');
-    const selected = ref(null);
+    const list = ref(null);
+    const memory = props.memory;
+    const layer = ref(memory.layer);
     const status = ref('');
-    const ready = ref(false);
     const lifecycle = new AbortController();
     let map;
-    let opener;
-    async function select(index, trigger) {
-      opener = trigger;
-      selected.value = projectionSites[index];
-      map?.select(index);
-      await nextTick();
-      details.value?.focus();
+    function select(index, source) {
+      const {id} = projectionSites[index];
+      memory.selected = id;
+      memory.focus = source;
+      emit('choose', id);
     }
     function basemap(kind) {
       layer.value = kind;
+      memory.layer = kind;
       map?.setLayer(kind);
     }
-    function overview() {
-      selected.value = null;
-      map?.select(null);
-      map?.fitAll();
-    }
-    function closeDetails() {
-      overview();
-      opener?.focus();
-    }
     onMounted(async () => {
+      const focus = memory.focus;
+      memory.focus = null;
+      if (focus === 'list') list.value?.querySelector(`[data-site="${memory.selected}"]`)?.focus({preventScroll: true});
       try {
         map = await mountProjectionMap(canvas.value, {
-          onSelect: select, onTileStatus: text => { status.value = text; }, signal: lifecycle.signal,
+          initialView: memory.view,
+          onViewChange: view => { memory.view = view; },
+          onSelect: index => select(index, 'pin'),
+          onTileStatus: text => { status.value = text; },
+          signal: lifecycle.signal,
         });
         if (lifecycle.signal.aborted) return;
-        const current = projectionSites.findIndex(site => site.id === selected.value?.id);
-        if (current >= 0) map.select(current);
+        map.highlight(memory.selected);
         map.setLayer(layer.value);
-        ready.value = true;
+        if (focus === 'pin' && document.activeElement === document.body) {
+          canvas.value.querySelector(`[data-site="${memory.selected}"]`)?.focus({preventScroll: true});
+        }
       } catch {
         if (!lifecycle.signal.aborted) status.value = t('Карта недоступна. Точки можно открыть из списка ниже.');
       }
     });
     onBeforeUnmount(() => lifecycle.abort());
-    return {canvas, details, layer, selected, status, ready, select, basemap, overview, closeDetails,
-      sites: projectionSites, openCoordinates, archivePortraitPath, t};
+    return {canvas, list, layer, status, select, basemap, sites: projectionSites, t};
   },
   template: `
     <section class="projection-map" aria-labelledby="projection-map-title">
-      <header class="projection-map-heading">
+      <header class="visually-hidden">
         <h1 id="projection-map-title">{{ t('Нижний Новгород') }}</h1>
-        <p>{{ t('Предлагаемые точки проекции') }}</p>
       </header>
       <div class="projection-map-frame">
         <div ref="canvas" class="projection-map-canvas" role="region" :aria-label="t('Карта точек проекции')"></div>
@@ -213,24 +299,11 @@ export const MapPage = {
           <button type="button" :aria-pressed="layer === 'street'" @click="basemap('street')">{{ t('Схема') }}</button>
           <button type="button" :aria-pressed="layer === 'satellite'" @click="basemap('satellite')">{{ t('Спутник') }}</button>
         </div>
-        <button v-if="ready" type="button" class="projection-map-reset" @click="overview"><AppIcon name="recenter" /> {{ t('Все точки') }}</button>
       </div>
       <p v-if="status" class="projection-map-status" role="status">{{ status }}</p>
-      <article v-if="selected" ref="details" tabindex="-1" class="projection-location" aria-labelledby="projection-location-title">
-        <header>
-          <img :src="archivePortraitPath(selected.id)" width="58" height="60" alt="">
-          <div><h2 id="projection-location-title">{{ t(selected.place) }}</h2><p>{{ t(selected.guide) }}</p></div>
-          <button type="button" class="iconbutton" :aria-label="t('Закрыть карточку')" @click="closeDetails"><AppIcon name="close" /></button>
-        </header>
-        <p class="projection-location-address">{{ t(selected.location) }}</p>
-        <p>{{ t(selected.story) }}</p>
-        <div class="projection-location-actions">
-          <a class="button" :href="openCoordinates(selected)" target="_blank" rel="noopener">{{ t('Открыть в Яндекс Картах') }}</a>
-        </div>
-      </article>
-      <ul class="projection-sites" :aria-label="t('Пять точек проекции')">
+      <ul ref="list" class="projection-sites" :aria-label="t('Пять точек проекции')">
         <li v-for="(site, index) in sites" :key="site.id">
-          <button type="button" :aria-pressed="selected?.id === site.id" @click="select(index, $event.currentTarget)">
+          <button type="button" :data-site="site.id" @click="select(index, 'list')">
             <span class="projection-site-index" aria-hidden="true">{{ index + 1 }}</span>
             <span class="projection-site-label"><strong>{{ t(site.place) }}</strong><small>{{ t(site.guide) }}</small></span>
             <AppIcon name="caret" />
@@ -250,7 +323,7 @@ export const AboutPage = {
       <h1 id="aboutTitle">{{ t('О проекте') }}</h1>
       <p class="about-intro">{{ t('«Город говорит» знакомит с историей Нижнего Новгорода через разговор с цифровыми образами людей, связанных с городом.') }}</p>
       <p>{{ t('Спросите Попова о радиоприёмнике, Чкалова — о перелёте через Северный полюс, Минина — об ополчении. Городовой расскажет о старом Нижнем, а Максим Горький — о литературе.') }}</p>
-      <p>{{ t('Выберите собеседника на главной и напишите вопрос в чате.') }}</p>
+      <p>{{ t('Выберите персонажа на главной или на карте, чтобы открыть его страницу.') }}</p>
       <a class="button about-start" href="#home">{{ t('Выбрать гида') }} <AppIcon name="arrow" /></a>
     </article>
   `,
@@ -284,7 +357,7 @@ export const VisitorScreen = {
         <button class="button" id="sendQuestion">Спросить</button>
       </form>
       <div id="askError" class="error" role="alert"></div>
-      <label style="font-size:13px;color:#c7dedb"><input type="checkbox" id="voiceToggle" style="vertical-align:middle"> Озвучивать ответы</label>
+      <label class="screen-voice-label"><input type="checkbox" id="voiceToggle" style="vertical-align:middle"> Озвучивать ответы</label>
       <p class="note" style="color:#a6c1c6">Круглый предпросмотр иллюстрирует формат LED-дисплея. Синхронизация губ не реализована.</p>
     </section>
   `,

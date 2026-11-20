@@ -11,23 +11,23 @@ try{
  await check('Small and tall phones: no overflow, readable input, reachable navigation',async()=>{
   for(const [width,height] of [[320,568],[360,740],[390,844],[430,932]]){
    await p.setViewportSize({width,height});
-   for(const route of ['home','studio','chat','map','screen','about','analytics']){
+   for(const route of ['home','guide/popov','studio','chat','map','screen','about','analytics']){
     await p.goto(base+'#'+route);await p.locator(route==='map'?'.projection-map':'main h1:visible,main h2:visible').first().waitFor();
     assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width} ${route}: overflow`);
     assert.ok(await p.locator('input:not([type=file]):not([type=checkbox]):not([type=color]),textarea,select').evaluateAll(es=>es.filter(e=>e.offsetWidth).every(e=>parseFloat(getComputedStyle(e).fontSize)>=16)),`${route}: input font triggers iOS zoom`);
-    if(route!=='screen'){const r=await p.locator('#mobileNav').boundingBox();assert.ok(r.y+r.height<=height+1);}
+    if(!['screen','chat'].includes(route)){const r=await p.locator('#mobileNav').boundingBox();assert.ok(r.y+r.height<=height+1);}
     if(['home','chat','map','studio'].includes(route))await p.screenshot({path:`qa/mobile/${route}-${width}.png`,fullPage:false});
    }
   }
  });
  await check('Studio: draft survives all three tabs, advanced controls and guide switch',async()=>{
-  await p.setViewportSize({width:390,height:844});await p.goto(base+'#studio');await p.locator('[name=name]').fill('Мобильный гид');await p.locator('#studio-knowledge').click();await p.locator('#addDoc').waitFor();await p.locator('#studio-preview').click();assert.match(await p.locator('.studio-preview h3').innerText(),/Мобильный гид/);await p.locator('#studio-profile').click();assert.equal(await p.locator('[name=name]').inputValue(),'Мобильный гид');await p.getByText('Голос и оформление',{exact:true}).click();await p.locator('[name=voice]').selectOption('friendly');await p.locator('#guidePicker').selectOption('nika');await p.waitForFunction(()=>document.querySelector('[name=name]').value==='Ника');await p.locator('#guidePicker').selectOption('gorky');await p.waitForFunction(()=>document.querySelector('[name=name]').value==='Мобильный гид');assert.equal(await p.locator('[name=name]').inputValue(),'Мобильный гид');await p.getByRole('button',{name:'Сохранить персонажа',exact:true}).click();await p.locator('#workspaceStatus').getByText('Все изменения сохранены').waitFor();await p.reload();await p.locator('[name=name]').waitFor();assert.equal(await p.locator('[name=name]').inputValue(),'Мобильный гид');
+  await p.setViewportSize({width:390,height:844});await p.goto(base+'#studio');await p.locator('[name=name]').fill('Мобильный гид');await p.locator('#studio-knowledge').click();await p.locator('#addDoc').waitFor();await p.locator('#studio-preview').click();assert.match(await p.locator('.studio-preview h2').innerText(),/Мобильный гид/);await p.locator('#studio-profile').click();assert.equal(await p.locator('[name=name]').inputValue(),'Мобильный гид');await p.getByText('Голос и оформление',{exact:true}).click();await p.locator('[name=voice]').selectOption('friendly');await p.locator('#guidePicker').selectOption('nika');await p.waitForFunction(()=>document.querySelector('[name=name]').value==='Ника');await p.locator('#guidePicker').selectOption('gorky');await p.waitForFunction(()=>document.querySelector('[name=name]').value==='Мобильный гид');assert.equal(await p.locator('[name=name]').inputValue(),'Мобильный гид');await p.getByRole('button',{name:'Сохранить персонажа',exact:true}).click();await p.locator('#workspaceStatus').getByText('Все изменения сохранены').waitFor();await p.reload();await p.locator('[name=name]').waitFor();assert.equal(await p.locator('[name=name]').inputValue(),'Мобильный гид');
  });
  await check('Mobile material sheet: scroll lock, save reachable, source retained',async()=>{
   await p.locator('#studio-knowledge').click();await p.locator('#addDoc').click();assert.equal(await p.evaluate(()=>getComputedStyle(document.body).overflow),'hidden');await p.locator('#docForm [name=title]').fill('Ночная прогулка');await p.locator('#docForm [name=text]').fill('Ночная прогулка начинается в 21:00 у маяка.');await p.locator('#docForm [name=source]').fill('Учебное расписание');await p.locator('#docForm [name=tags]').fill('ночная прогулка маяк');await p.getByRole('button',{name:'Сохранить материал',exact:true}).click();await p.locator('#docForm').waitFor({state:'detached'});await p.locator('[data-doc]').filter({hasText:'Изменить'}).last().waitFor();assert.ok(!await p.locator('body').evaluate(e=>e.classList.contains('modal-open')));await p.screenshot({path:'qa/mobile/knowledge-390.png'});
  });
  await check('Chat: composer fits a short visual viewport and sends without scrolling page',async()=>{
-  await p.locator('#previewChat').click();await p.setViewportSize({width:390,height:430});await p.locator('#question').fill('Ночная прогулка');const b=await p.locator('#question').boundingBox(),nav=await p.locator('#mobileNav').boundingBox();assert.ok(b.y>=0&&b.y+b.height<=nav.y);await p.locator('#sendQuestion').click();await p.locator('#messages').getByText(/21:00/).waitFor();assert.equal(await p.evaluate(()=>document.documentElement.scrollTop),0);await p.screenshot({path:'qa/mobile/chat-short.png'});
+  await p.locator('#previewChat').click();await p.setViewportSize({width:390,height:430});await p.locator('#question').fill('Ночная прогулка');const b=await p.locator('#question').boundingBox();assert.ok(b.y>=0&&b.y+b.height<=430);assert.equal(await p.locator('#mobileNav').isVisible(),false);await p.locator('#sendQuestion').click();await p.locator('#messages').getByText(/21:00/).waitFor();assert.equal(await p.evaluate(()=>document.documentElement.scrollTop),0);await p.screenshot({path:'qa/mobile/chat-short.png'});
  });
  await check('VisualViewport keyboard event hides navigation and keeps send control above keyboard',async()=>{
   await p.setViewportSize({width:390,height:844});await p.locator('#question').focus();
@@ -48,21 +48,22 @@ try{
   await p.locator('.projection-map img[src*="/World_Imagery/"]').first().waitFor({state:'attached'});
   await p.getByRole('button',{name:'Схема',exact:true}).click();
   await p.locator('.projection-map img[src*="tile.openstreetmap.org"]').first().waitFor({state:'attached'});
-  const details = p.locator('.projection-location');
+  const details = p.locator('.guide-detail');
   const points = ['44.006961,56.326997','44.008924,56.330091','43.995413,56.317288','44.013937,56.329342','44.01851,56.3228'];
   for (const [index, coords] of points.entries()) {
    await p.locator('.projection-sites button').nth(index).click();
-   const links = details.getByRole('link');
-   assert.equal(await links.count(),1);
-   assert.equal(await links.first().textContent(),'Открыть в Яндекс Картах');
-   const destination = new URL(await links.first().getAttribute('href'));
+   const link = details.getByRole('link', {name:'Открыть в Яндекс Картах'});
+   const destination = new URL(await link.getAttribute('href'));
    assert.equal(destination.origin + destination.pathname,'https://yandex.ru/maps/');
    assert.equal(destination.searchParams.get('ll'),coords);
    assert.equal(destination.searchParams.get('pt'),coords);
+   await details.locator('.guide-detail-map .projection-pin').waitFor();
+   if (index === 4) await details.getByText('Улица Семашко, 19').waitFor();
+   await details.getByRole('link',{name:'Назад',exact:true}).click();
+   await p.locator('.projection-map').waitFor();
   }
-  await details.getByText('Улица Семашко, 19').waitFor();
-  await p.getByRole('button',{name:'Все точки',exact:true}).click();
-  await details.waitFor({state:'hidden'});
+  await p.locator('.projection-pin').first().waitFor();
+  assert.equal(await p.getByRole('button',{name:'Все точки',exact:true}).count(),0);
   assert.deepEqual(await p.locator('#mobileNav a, #mobileNav button').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label') || item.textContent)),['Главная','Сканировать QR-код','Карта']);
   const nav = await p.locator('#mobileNav').boundingBox();
   const scan = await p.getByRole('button',{name:'Сканировать QR-код'}).boundingBox();
