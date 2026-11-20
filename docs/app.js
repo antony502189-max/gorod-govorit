@@ -1,15 +1,19 @@
-import {request as api} from './storage.mjs';
-import {icon} from './icons.mjs';
-import {initialState,sources,routes} from './data.mjs';
-import {validateState} from './engine.mjs';
+import {mapFrame} from './route-map.mjs';
+import {request as api} from './storage.mjs?v=river-design';
+import {icon} from './icons.mjs?v=river-design';
+import {initialState,sources,routes} from './data.mjs?v=river-design';
+import {validateState} from './engine.mjs?v=river-design';
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let state=initialState(),revision=0,ready=false,busy=false,filter=90,selectedRoute='river',history=[],lastGuide='',saveQueue=Promise.resolve();
+let state=initialState(),revision=0,ready=false,busy=false,filter=180,selectedRoute='waterfront',history=[],lastGuide='',saveQueue=Promise.resolve();
 const scope=new URL('.',import.meta.url).pathname;
 const draftKey='gg-pages-drafts:'+scope;
 const channel='BroadcastChannel'in window?new BroadcastChannel('gg-pages:'+scope):null;
 const main=$('#main');
 let dirty=false,conflict=false,saveError='',pendingSaves=0,viewId=0,askController=null,remotePending=false,screenRound=false;
 let studioTab='profile';
+let mapZoom=1, mapLabels=true, activeStop=-1;
+let savedPlaces=[];
+try{const saved=JSON.parse(localStorage.getItem('gg-saved-places:'+scope)||'[]');if(Array.isArray(saved))savedPlaces=saved;}catch{}
 let drafts={},routeData=null,routeError='',routeLoading=false,modalReturn=null;
 try{drafts=JSON.parse(sessionStorage.getItem(draftKey)||'{}');}catch{}
 function keepDrafts(){try{sessionStorage.setItem(draftKey,JSON.stringify(drafts));}catch{toast('Черновик слишком велик для восстановления после закрытия. Скачайте копию.');}}
@@ -50,35 +54,80 @@ const places=[
  {id:'river',name:'Нижне-Волжская набережная',kind:'Прогулки · у воды',photo:'lower-volga.jpg',route:'river',guide:'gorky',question:'Где находится портал?'},
  {id:'church',name:'Рождественская улица',kind:'Архитектура · старый город',photo:'church.jpg',route:'literature',guide:'gorky',question:'Где находится портал?'}
 ];
-function placeCard(p){return `<button class="place-card" data-place="${p.id}"><img src="./assets/${p.photo}" alt="${p.name}" loading="lazy"><span class="place-info"><strong>${p.name}</strong><small>${p.kind}</small></span><span class="place-arrow">${icon('arrow')}</span></button>`;}
-function home(){return `<div class="discovery-top"><span class="eyebrow">Гулять. Замечать. Узнавать.</span><h1>Мой Нижний<br>Новгород</h1><p>Городские истории и ваши проводники.</p></div>
-<section class="search-section" aria-label="Поиск по городу"><form id="discoverySearch" class="city-search">${icon('search')}<input id="cityQuery" aria-label="Найти место, гида или маршрут" placeholder="Поиск по городу" autocomplete="off" maxlength="100" enterkeyhint="search"><button class="search-submit" aria-label="Найти">${icon('arrow')}</button></form><div id="searchResults" hidden></div></section>
-<section class="city-hero"><img class="hero-photo" src="./assets/city.jpg" alt="Кремль и Чкаловская лестница с Волги" fetchpriority="high"><div class="hero-caption"><div><span class="eyebrow">От разговора к прогулке</span><h2>Увидеть город<br>своими глазами</h2></div><span class="hero-count">30–60<br><small>минут</small></span></div><a class="button route-cta" href="#routes">Выбрать прогулку ${icon('arrow')}</a></section>
-<nav class="quick-actions" aria-label="Что вас интересует"><a href="#routes">${icon('walk')}<span>Прогулки</span></a><button data-place="kremlin">${icon('museum')}<span>Культура</span></button><button data-chat="${esc((state.guides.find(g=>g.id==='gorky')||guide()).id)}">${icon('book')}<span>Истории</span></button><a href="#guides">${icon('chat')}<span>Гиды</span></a></nav>
-<section class="places-section"><div class="section-top"><h2>Знакомые места</h2><a class="text-link" href="#routes">Маршруты ${icon('arrow')}</a></div><div class="places-grid">${places.map(placeCard).join('')}</div></section>
-<section class="guides-section"><div class="section-top"><h2>С кем поговорим?</h2><a class="text-link" href="#guides">Все гиды ${icon('arrow')}</a></div><div class="grid">${state.guides.slice(0,3).map(guideCard).join('')}</div></section>
-<a class="studio-invite" href="#studio"><span class="invite-icon">${icon('plus')}</span><span><strong>Создать своего гида</strong><small>Ваш образ и ваши знания</small></span>${icon('arrow')}</a>`;}
+function bookmark(p){
+ const saved=savedPlaces.includes(p.id);
+ return `<button class="place-bookmark" data-place-save="${p.id}" type="button" aria-label="Сохранить: ${p.name}" aria-pressed="${saved}">${icon(saved?'check':'save')}</button>`;
+}
+function placeCard(p){
+ return `<article class="place-tile"><button class="place-card" data-place="${p.id}"><img src="./assets/${p.photo}" alt="" loading="${['kremlin','stairs'].includes(p.id)?'eager':'lazy'}"><span class="place-info"><strong>${p.name}</strong><small>${p.kind}</small></span></button>${bookmark(p)}</article>`;
+}
+function home(){
+ return `<section class="search-section" aria-label="Поиск по городу">
+ <form id="discoverySearch" class="city-search" role="search">${icon('search')}<input id="cityQuery" aria-label="Найти место, гида или маршрут" placeholder="Куда отправимся?" autocomplete="off" maxlength="100" enterkeyhint="search"><button class="search-submit" type="button" aria-label="Показать список мест" aria-expanded="false" aria-controls="searchResults">${icon('studio')}</button></form><div id="searchResults" hidden></div>
+ </section>
+ <section class="city-hero" aria-labelledby="cityTitle"><img class="hero-photo" src="./assets/volga-kremlin.webp" alt="" fetchpriority="high">
+ <div class="hero-caption"><h1 id="cityTitle">Нижний<br>Новгород</h1><p>Город на слиянии рек</p></div>
+ <a class="button route-cta" href="#routes" id="featuredRoute">${icon('route')} Создать маршрут ${icon('arrow')}</a></section>
+ <nav class="quick-actions" aria-label="Что делать в городе">
+ <a href="#routes">${icon('walk')}<span>Прогулки</span></a><button data-place="kremlin">${icon('museum')}<span>Культура</span></button>
+ <a href="https://yandex.ru/maps/?text=кафе%20Нижний%20Новгород" target="_blank" rel="noopener">${icon('fork')}<span>Поесть</span></a><a href="#map">${icon('pin')}<span>Рядом</span></a></nav>
+ <section class="places-section"><div class="section-top"><h2>Популярные места</h2></div><div class="places-grid">${places.map(placeCard).join('')}</div></section>
+ <section class="guides-section"><div class="section-top"><h2>Местные истории</h2><a class="text-link" href="#guides">Все гиды ${icon('arrow')}</a></div><div class="grid">${state.guides.slice(0,3).map(guideCard).join('')}</div></section>
+ <a class="studio-invite" href="#studio"><span class="invite-icon">${icon('plus')}</span><span><strong>Создать своего гида</strong><small>Ваш образ и ваши знания</small></span>${icon('arrow')}</a>`;
+}
 
+function selectFeaturedRoute(){
+ filter=180;
+ routeData=null;
+ routeError='';
+ selectedRoute='waterfront';
+ resetMap();
+}
 function bindDiscovery(){
  document.querySelectorAll('[data-place]').forEach(b=>b.onclick=()=>openPlace(b.dataset.place));
- $('#discoverySearch')?.addEventListener('submit',e=>{e.preventDefault();searchCity();});
+ $('#featuredRoute')?.addEventListener('click',selectFeaturedRoute);
+ $('#discoverySearch')?.addEventListener('submit',e=>{e.preventDefault();searchCity();$('#searchResults button')?.focus();});
+ $('.search-submit')?.addEventListener('click',()=>{
+  const results=$('#searchResults');
+  if(results.hidden)searchCity();
+  else hideSearch();
+ });
+ document.querySelectorAll('[data-place-save]').forEach(button=>button.onclick=()=>togglePlaceBookmark(button));
  $('#cityQuery')?.addEventListener('input',searchCity);
- $('#cityQuery')?.addEventListener('keydown',e=>{if(e.key==='Escape'){e.target.value='';$('#searchResults').hidden=true;}});
+ $('.search-section')?.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){hideSearch();$('#cityQuery').focus();}
+ });
+ $('.search-section')?.addEventListener('focusout',e=>{
+  if(e.relatedTarget&&!e.currentTarget.contains(e.relatedTarget))hideSearch();
+ });
+}
+function hideSearch(){
+ $('#searchResults').hidden=true;
+ $('.search-submit').setAttribute('aria-expanded','false');
+}
+function togglePlaceBookmark(button){
+ const id=button.dataset.placeSave;
+ const saved=savedPlaces.includes(id);
+ savedPlaces=saved?savedPlaces.filter(place=>place!==id):[...savedPlaces,id];
+ try{localStorage.setItem('gg-saved-places:'+scope,JSON.stringify(savedPlaces));}
+ catch{toast('Избранное доступно до закрытия этой страницы');}
+ button.setAttribute('aria-pressed',String(!saved));
+ button.innerHTML=icon(saved?'save':'check');
 }
 function searchCity(){
- const q=$('#cityQuery').value.trim().toLocaleLowerCase('ru');const box=$('#searchResults');box.hidden=!q;if(!q)return;
- const found=[...places.filter(p=>(p.name+' '+p.kind).toLowerCase().includes(q)).map(p=>`<button data-place="${p.id}">${icon('pin')}<span>${p.name}<small>Место в городе</small></span>${icon('arrow')}</button>`),...state.guides.filter(g=>(g.name+' '+g.role+' '+g.tag).toLowerCase().includes(q)).map(g=>`<button data-search-guide="${esc(g.id)}">${icon('chat')}<span>${esc(g.name)}<small>${esc(g.role)}</small></span>${icon('arrow')}</button>`),...routes.filter(r=>(r.name+' '+r.stops.join(' ')).toLowerCase().includes(q)).map(r=>`<button data-search-route="${r.id}">${icon('route')}<span>${r.name}<small>${r.minutes} минут · ${r.distance}</small></span>${icon('arrow')}</button>`)];
+ const q=$('#cityQuery').value.trim().toLocaleLowerCase('ru');const box=$('#searchResults');box.hidden=false;$('.search-submit').setAttribute('aria-expanded','true');
+ const found=[...places.filter(p=>(p.name+' '+p.kind).toLowerCase().includes(q)).map(p=>`<button data-place="${p.id}">${icon('pin')}<span>${p.name}<small>Место в городе</small></span>${icon('arrow')}</button>`),...state.guides.filter(g=>q&&(g.name+' '+g.role+' '+g.tag).toLowerCase().includes(q)).map(g=>`<button data-search-guide="${esc(g.id)}">${icon('chat')}<span>${esc(g.name)}<small>${esc(g.role)}</small></span>${icon('arrow')}</button>`),...routes.filter(r=>q&&(r.name+' '+r.stops.join(' ')).toLowerCase().includes(q)).map(r=>`<button data-search-route="${r.id}">${icon('route')}<span>${r.name}<small>${r.minutes} минут · ${r.distance}</small></span>${icon('arrow')}</button>`)];
  box.innerHTML=`<div class="search-result-heading" role="status">${found.length?'Найдено: '+found.length:'Ничего не нашлось. Попробуйте «кремль», «Волга» или имя гида.'}</div>${found.join('')}`;
  box.querySelectorAll('[data-place]').forEach(b=>b.onclick=()=>openPlace(b.dataset.place));
  box.querySelectorAll('[data-search-guide]').forEach(b=>b.onclick=()=>choose(b.dataset.searchGuide));
- box.querySelectorAll('[data-search-route]').forEach(b=>b.onclick=()=>{filter=90;routeData=null;selectedRoute=b.dataset.searchRoute;location.hash='routes';});
+ box.querySelectorAll('[data-search-route]').forEach(b=>b.onclick=()=>{filter=180;routeData=null;resetMap();selectedRoute=b.dataset.searchRoute;location.hash='routes';});
 }
 function openPlace(id){
  const p=places.find(x=>x.id===id);if(!p)return;modalReturn=document.activeElement;document.body.classList.add('modal-open');main.inert=true;$('.topbar').inert=true;$('#mobileNav').inert=true;
  const r=routes.find(x=>x.id===p.route);
  $('#modal').innerHTML=`<div class="modal-backdrop"><section class="modal-card place-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="iconbutton" id="closeModal" aria-label="Закрыть">${icon('close')}</button><img src="./assets/${p.photo}" alt="${p.name}"><div class="place-modal-copy"><span class="eyebrow muted">${p.kind}</span><h2 id="modalTitle">${p.name}</h2><p>Добавьте это место в знакомство с Нижним. Оно входит в прогулку «${r.name}».</p><span class="duration">${icon('clock')} ${r.minutes} минут</span><div class="card-actions"><button class="button" id="placeRoute">Открыть маршрут ${icon('arrow')}</button><button class="button secondary" id="placeGuide">Выбрать гида</button></div><small>Время прогулки ориентировочное. Условия посещения уточняйте перед поездкой.</small></div></section></div>`;
  $('#closeModal').onclick=closeModal;$('#modal').onclick=e=>{if(e.target.className==='modal-backdrop')closeModal();};
- $('#placeRoute').onclick=()=>{filter=90;routeData=null;selectedRoute=p.route;closeModal();location.hash='routes';};
+ $('#placeRoute').onclick=()=>{filter=180;routeData=null;resetMap();selectedRoute=p.route;closeModal();location.hash='routes';};
  $('#placeGuide').onclick=()=>{closeModal();location.hash='guides';};$('#closeModal').focus();
 }
 function guidesPage(){return `<div class="page-heading"><div><div class="eyebrow muted">Библиотека персонажей</div><h1>Мои гиды</h1><p>Разные характеры, голоса и знания. Выберите собеседника или создайте собственного.</p></div><button class="button" id="newGuide">＋ Создать персонажа</button></div><div class="grid">${state.guides.map(guideCard).join('')}</div>`;}
@@ -86,31 +135,99 @@ function studio(){const g=editGuide();return `<div class="page-heading studio-he
 <div class="studio-picker"><label for="guidePicker">Персонаж</label><select id="guidePicker">${state.guides.map(x=>`<option value="${esc(x.id)}" ${x.id===g.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select><button class="iconbutton" id="previewChat" aria-label="Проверить диалог">${icon('chat')}</button></div>
 <div class="editor-tabs" role="tablist" aria-label="Настройка персонажа">${[['profile','Образ'],['knowledge','Знания'],['preview','Просмотр']].map(([id,label])=>`<button id="studio-${id}" role="tab" aria-selected="${studioTab===id}" aria-controls="studioPanel" tabindex="${studioTab===id?0:-1}" data-studio-tab="${id}">${label}${id==='knowledge'?` <span>${g.docs.length}</span>`:''}</button>`).join('')}</div>
 <div id="studioPanel" role="tabpanel" aria-labelledby="studio-${studioTab}">${studioTab==='profile'?`<section class="panel profile-panel"><div class="profile-intro">${portrait(g)}<div><h2>Образ и характер</h2><p>Как представится ваш гид</p></div></div><form id="guideForm"><div class="two"><label class="field"><span>Имя персонажа</span><input name="name" required maxlength="60" value="${esc(g.name)}"></label><label class="field"><span>Роль</span><input name="role" required maxlength="100" value="${esc(g.role)}"></label></div><label class="field"><span>Приветствие</span><textarea name="greeting" required maxlength="500">${esc(g.greeting)}</textarea></label><details class="advanced-settings"><summary>Голос и оформление</summary><div class="two"><label class="field"><span>Характер голоса</span><select name="voice"><option value="calm" ${g.voice==='calm'?'selected':''}>Спокойный рассказчик</option><option value="friendly" ${g.voice==='friendly'?'selected':''}>Дружелюбный проводник</option></select><small>Используется доступный русский голос браузера</small></label><label class="field"><span>Цвет фона</span><input type="color" name="color" value="${esc(g.color)}"></label></div><div class="two"><label class="field"><span>Базовый образ</span><select name="art">${[['writer','Писатель'],['guide','Проводник'],['fox','Лис'],['custom','Свой герой']].map(([v,t])=>`<option value="${v}" ${g.art===v?'selected':''}>${t}</option>`).join('')}</select></label><label class="field"><span>Категория</span><input name="tag" maxlength="60" value="${esc(g.tag||'')}"></label></div></details><label class="field"><span>Своя картинка</span><input type="file" id="avatarUpload" accept="image/png,image/jpeg,image/webp"><small>PNG, JPEG или WebP · до 1 МБ. Изображение без синхронизации губ.</small></label><button type="button" class="text-link" id="resetImage">Вернуть стандартный образ</button><div id="guideError" class="error" role="alert"></div><div class="editor-save"><button class="button full" type="submit">Сохранить персонажа ${icon('check')}</button></div><details class="advanced-settings manage-settings"><summary>Управление персонажем</summary><button class="button secondary" type="button" id="exportGuide">Экспорт JSON</button><div class="card-actions management"><button type="button" class="button secondary small" id="duplicateGuide">Дублировать</button><button type="button" class="button danger small" id="deleteGuide">Удалить персонажа</button></div></details><p class="save-status">Картинка и поля сохраняются вместе. Черновик остаётся при переходе между разделами.</p></form></section>`:studioTab==='knowledge'?`<section class="panel"><div class="section-top" style="margin:0 0 15px"><h2 style="margin:0">База знаний</h2><button class="button secondary small" id="addDoc">＋ Материал</button></div><p class="note">Персонаж отвечает по этим сведениям. Добавляйте проверенные факты, название и ссылку на источник.</p>${g.docs.length?g.docs.map(d=>`<div class="doc-item"><div><strong>${esc(d.title)}</strong><p>${esc((sources[d.source]||{}).title||d.source)} · ${d.text.length} символов · ${d.checkedAt?'проверено '+esc(d.checkedAt):'дата проверки не указана'}</p></div><button data-doc="${esc(d.id)}" aria-label="Изменить ${esc(d.title)}">Изменить</button></div>`).join(''):'<div class="empty">Пока нет материалов. Добавьте первый, чтобы гид мог отвечать.</div>'}</section>`:`<section class="panel studio-preview"><div class="eyebrow muted" style="margin-bottom:16px">Предпросмотр</div>${portrait(g)}<h3>${esc(g.name)}</h3><p class="muted" style="font-size:14px">${esc(g.role)}</p><p class="preview-greeting">${esc(g.greeting)}</p><button class="button full" id="previewChatFromCard">Проверить диалог</button><button class="button secondary full" id="screenStudio" style="margin-top:10px">Экран посетителя</button><p class="note">Художественный цифровой образ. Можно вывести на монитор или проверить круглый формат для LED-дисплея.</p></section>`}</div>`;}
-function mapSvg(r){
- const positions=r.id==='kremlin'?[[105,385],[280,330],[450,205],[470,440]]:[[100,370],[290,330],[475,205]];
- const photos=r.id==='kremlin'?['zachatie.jpg','zachatie.jpg','chkalov.jpg','lower-volga.jpg']:r.id==='river'?['church.jpg','zachatie.jpg','lower-volga.jpg']:['church.jpg','zachatie.jpg','church.jpg'];
- const line=positions.map(p=>p.join(',')).join(' ');
- return `<div class="map" role="img" aria-label="Условная схема: ${esc(r.name)}. ${r.stops.length} остановки. Не для навигации."><svg viewBox="0 0 600 530" preserveAspectRatio="xMidYMid meet"><rect width="600" height="530" fill="#eae9dd"/><path d="M0 0H600V150Q430 140 340 180T0 270Z" fill="#9ed0d8"/><path d="M0 278Q180 200 340 188T600 160" fill="none" stroke="#fffdf5" stroke-width="12"/><path d="M0 350 600 185M0 475 600 300M80 530 200 230M240 530 330 195M530 530 410 180M0 420 600 460" stroke="#fffdf5" stroke-width="10" fill="none"/><path d="M290 260 370 225 403 297 345 330ZM80 430l70-10 22 75-75 15Z" fill="#c4d7b0"/><polyline points="${line}" fill="none" stroke="#fffdf5" stroke-width="12" stroke-linejoin="round"/><polyline points="${line}" fill="none" stroke="#178c8c" stroke-width="5" stroke-linejoin="round"/>
- ${r.stops.map((s,i)=>{const [x,y]=positions[i];const words=s.split(' '),mid=Math.ceil(words.length/2);return `<g><rect x="${x-80}" y="${y-132}" width="160" height="111" rx="12" fill="#fcfcf1"/><image href="./assets/${photos[i]}" x="${x-27}" y="${y-124}" width="54" height="43" preserveAspectRatio="xMidYMid slice"/><text x="${x}" y="${y-60}" text-anchor="middle" font-family="Inter,Arial" font-size="14" font-weight="650" fill="#123039"><tspan x="${x}">${esc(words.slice(0,mid).join(' '))}</tspan><tspan x="${x}" dy="19">${esc(words.slice(mid).join(' '))}</tspan></text><circle cx="${x}" cy="${y}" r="15" fill="#fff" stroke="#178c8c" stroke-width="5"/><text x="${x}" y="${y+5}" text-anchor="middle" fill="#184f59" font-family="Inter,Arial" font-size="14" font-weight="700">${i+1}</text></g>`;}).join('')}
- </svg><span class="map-label">Волга</span><span class="map-caption">Условная схема · не для навигации</span></div>`;
+function resetMap(){
+ mapZoom=1;
+ activeStop=-1;
 }
-function routePage(){if(!routeData)return `<section class="panel"><h1>Мой маршрут</h1><p role="status">${esc(routeError||'Загружаем маршруты…')}</p>${routeError?'<button class="button" id="retryRoutes">Повторить загрузку</button>':''}</section>`;
- const available=routeData,r=available.find(x=>x.id===selectedRoute)||available[0];selectedRoute=r?.id;if(!r)return '<section class="panel"><h1>Маршрутов пока нет</h1></section>';
- return `<div class="page-heading"><div><h1>Мой маршрут</h1><p>Сколько времени у вас есть?</p></div></div><div class="time-options" aria-label="Длительность прогулки">${[30,45,60,90].map(n=>`<button class="chip ${filter===n?'active':''}" aria-pressed="${filter===n}" data-time="${n}">${n===90?'Все':'До '+n+' мин'}</button>`).join('')}</div>
- <div class="route-layout"><div class="route-choice"><label class="field" for="routePicker"><span>Прогулка</span><select id="routePicker">${available.map(x=>`<option value="${x.id}" ${x.id===r.id?'selected':''}>${esc(x.name)} · ${x.minutes} мин</option>`).join('')}</select></label><p class="route-choice-note">${icon('walk')} ${esc(r.level)}</p></div><div class="route-detail">${mapSvg(r)}<section class="route-summary"><div class="route-summary-title"><h2>${esc(r.name)}</h2><span class="duration">${icon('clock')} ${r.minutes} мин</span></div><div class="route-meta"><span>${esc(r.distance)}</span><span>${r.stops.length} остановки</span></div><ol class="stops">${r.stops.map((s,i)=>`<li><b>${i+1}</b><span>${esc(s)}</span></li>`).join('')}</ol><details class="route-notes"><summary>О прогулке и доступности</summary><p>${esc(r.description)}</p><a class="text-link" href="#chat">Спросить гида ${icon('arrow')}</a></details><button class="text-link" id="downloadRoute">${icon('save')} Скачать план прогулки</button></section></div></div>
- <div class="route-dock"><button class="iconbutton" id="saveRoute" aria-label="${state.savedRoutes.includes(r.id)?'Маршрут сохранён':'Сохранить маршрут'}" aria-pressed="${state.savedRoutes.includes(r.id)}">${icon(state.savedRoutes.includes(r.id)?'check':'save')}</button><a class="button" target="_blank" rel="noopener" href="https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=${r.coords[0].join('%2C')}%3B${r.coords.at(-1).join('%2C')}">Начало и конец на карте ${icon('arrow')}</a></div>`;
+function stopPhoto(route,index){
+ return route.photos?.[index] || ['zachatie.jpg','church.jpg','chkalov.jpg','lower-volga.jpg'][index];
 }
-
+function mapArtwork(route){
+ const frame=mapFrame(route,mapZoom);
+ return `<svg viewBox="${frame.viewBox}" preserveAspectRatio="none" aria-hidden="true">
+ <image href="./assets/route-map.webp" width="1000" height="644" preserveAspectRatio="none" />
+ ${frame.line?`<polyline class="route-outline" points="${frame.line}" /><polyline class="route-line" points="${frame.line}" />`:''}
+ </svg>
+ <span class="map-river" style="left:${frame.river.left}%;top:${frame.river.top}%">Волга</span>
+ ${frame.pins.map(({left,top},i)=>`<button type="button" class="map-pin" data-map-stop="${i}" aria-label="${esc(route.stops[i])}" aria-pressed="${i===activeStop}" style="left:${left}%;top:${top}%">
+ <span class="pin-dot"></span><span class="pin-label"><img src="./assets/${stopPhoto(route,i)}" alt=""><span>${esc(route.stops[i])}</span></span></button>`).join('')}`;
+}
+function routeMap(route){
+ return `<section class="route-map" aria-label="Карта прогулки" data-labels="${mapLabels}">
+ <div class="route-map-art">${mapArtwork(route)}</div>
+ <div class="map-controls">
+ <button class="iconbutton" data-map-action="labels" aria-label="Подписи на карте" aria-pressed="${mapLabels}">${icon('layers')}</button>
+ <div class="map-zoom"><button class="iconbutton" data-map-action="in" aria-label="Приблизить карту">${icon('plus')}</button><button class="iconbutton" data-map-action="out" aria-label="Отдалить карту">${icon('minus')}</button></div>
+ <button class="iconbutton" data-map-action="reset" aria-label="Показать маршрут целиком">${icon('recenter')}</button>
+ </div>
+ <a class="map-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a>
+ </section>`;
+}
+function routePage(){
+ if(!routeData)return `<section class="panel"><p role="status">${esc(routeError||'Загружаем маршруты…')}</p>${routeError?'<button class="button" id="retryRoutes">Повторить загрузку</button>':''}</section>`;
+ const route=routeData.find(item=>item.id===selectedRoute)||routeData[0];
+ if(!route)return '<section class="panel"><h2>Маршрутов пока нет</h2></section>';
+ selectedRoute=route.id;
+ return `<div class="route-layout">
+ ${routeMap(route)}
+ <div class="route-detail"><section class="route-summary" aria-labelledby="routeName">
+ <div class="route-summary-title"><img src="./assets/${stopPhoto(route,0)}" alt="">
+ <div><h2 id="routeName">${esc(route.name)}</h2><div class="route-meta"><span>${icon('walk')} ${esc(route.distance)}</span><span>${icon('pin')} ${route.stops.length} остановки</span></div></div>
+ <span class="duration">${icon('clock')} ${route.minutes===120?'2 часа':route.minutes+' мин'}</span></div>
+ <ol class="stops">${route.stops.map((stop,i)=>`<li><button type="button" data-timeline-stop="${i}" aria-label="${esc(stop)}" aria-pressed="${i===activeStop}"><b>${i+1}</b><span>${esc(route.labels?.[i]||stop)}</span></button></li>`).join('')}</ol>
+ <div id="selectedStop" role="status" hidden></div>
+ <a class="button route-open" target="_blank" rel="noopener" href="https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=${route.coords[0].join('%2C')}%3B${route.coords.at(-1).join('%2C')}">Начало и конец на карте ${icon('arrow')}</a>
+ </section></div></div>
+ <section class="route-options" id="routeOptions" aria-labelledby="routeOptionsTitle">
+ <h2 id="routeOptionsTitle">Другие прогулки</h2>
+ <div class="time-options" aria-label="Длительность прогулки">${[30,45,60,180].map(n=>`<button class="chip ${filter===n?'active':''}" aria-pressed="${filter===n}" data-time="${n}">${n===180?'Все':'До '+n+' мин'}</button>`).join('')}</div>
+ <label class="field" for="routePicker"><span>Выбрать прогулку</span><select id="routePicker">${routeData.map(item=>`<option value="${item.id}" ${item.id===route.id?'selected':''}>${esc(item.name)} · ${item.minutes} мин</option>`).join('')}</select></label>
+ <p class="note">${esc(route.level)}. ${esc(route.description)}${route.path?'':' На карте показаны остановки.'}</p>
+ <button class="text-link" id="downloadRoute">${icon('save')} Скачать план прогулки</button>
+ </section>`;
+}
+function bindMap(){
+ const map=$('.route-map');
+ const route=routes.find(item=>item.id===selectedRoute);
+ if(!map||!route)return;
+ function showStop(index){
+  activeStop=index;
+  for(const button of main.querySelectorAll('[data-map-stop],[data-timeline-stop]')){
+   button.setAttribute('aria-pressed',String(Number(button.dataset.mapStop??button.dataset.timelineStop)===index));
+  }
+  const status=$('#selectedStop');
+  status.hidden=false;
+  status.textContent=route.stops[index];
+ }
+ main.querySelectorAll('[data-timeline-stop]').forEach(button=>button.onclick=()=>showStop(Number(button.dataset.timelineStop)));
+ map.addEventListener('click',e=>{
+  const pin=e.target.closest('[data-map-stop]');
+  if(pin){showStop(Number(pin.dataset.mapStop));return;}
+  const button=e.target.closest('[data-map-action]');
+  switch(button?.dataset.mapAction){
+   case 'labels':
+    mapLabels=!mapLabels;
+    map.dataset.labels=String(mapLabels);
+    button.setAttribute('aria-pressed',String(mapLabels));
+    return;
+   case 'in': mapZoom=Math.min(1.9,mapZoom+0.3);break;
+   case 'out': mapZoom=Math.max(0.7,mapZoom-0.3);break;
+   case 'reset': mapZoom=1;break;
+   default: return;
+  }
+  $('.route-map-art').innerHTML=mapArtwork(route);
+ });
+}
 function chatPage(){const g=guide();if(lastGuide!==g.id){lastGuide=g.id;history=[];}return `<div class="chat-layout"><section class="chat-panel"><div class="chat-title">${portrait(g)}<div><h1>${esc(g.name)}</h1><span>${esc(g.role)}</span></div><a class="text-link" href="#guides">Сменить</a></div><div class="messages" id="messages" aria-live="polite"><div class="message"><span class="message-author">${esc(g.name)}</span>${esc(g.greeting)}</div>${history.map(messageHtml).join('')}</div><div class="chat-composer"><div class="suggestions" aria-label="Темы разговора">${suggestions(g).map(q=>`<button data-question="${esc(q)}">${esc(q)}</button>`).join('')}</div><form class="ask-form" id="askForm"><input id="question" aria-label="Ваш вопрос" placeholder="Спросите у гида…" maxlength="500" required autocomplete="off" enterkeyhint="send"><button class="button" id="sendQuestion">Спросить</button></form><div id="askError" class="error" role="alert"></div><div class="chat-tools"><label><input type="checkbox" id="voiceToggle"> Озвучка</label><button class="text-link" id="micButton">Микрофон</button><button class="text-link" id="feedbackButton">Полезно</button></div></div></section></div>`;}
 
 function suggestions(g){return g.id==='gorky'?['Какое ваше настоящее имя?','Что вы написали?','Где находится портал?']:g.id==='nika'?['Что посмотреть в кремле?','Можно на велосипеде?','Сколько стоят билеты?']:g.id==='hotel'?['Во сколько завтрак?','Когда заселение?']:g.docs.slice(0,3).map(d=>d.title);}
 function messageHtml(m){let s=m.source;let src=s?(sources[s.id]||{title:s.title,url:s.url}):null;return `<div class="message ${m.user?'user':''}">${esc(m.text)}${s?.checkedAt?`<small class="source-date">Проверено: ${esc(s.checkedAt)}</small>`:''}${src?(src.url?`<a href="${esc(src.url)}" target="_blank" rel="noopener">Источник: ${esc(src.title)}</a>`:`<span style="display:block;font-size:12px;margin-top:8px">Источник: ${esc(src.title)}</span>`):''}</div>`;}
 function screenPage(){const g=guide();return `<section class="screen-layout ${screenRound?'round-format':'monitor-format'}"><div class="screen-top"><div><strong>Город говорит</strong><p>Предпросмотр экрана · оборудование не подключено</p></div><a href="#studio" class="button white small">Вернуться в студию</a></div><div class="screen-controls"><button class="button white small" id="screenFormat">${screenRound?'Формат монитора':'Круглый формат'}</button><button class="button white small" id="fullscreen">Во весь экран</button><button class="button white small" id="resetSession">Новый посетитель</button><button class="button white small" id="stopVoice">Остановить речь</button></div><div id="screenPortrait">${portrait(g)}</div><div class="bars" aria-hidden="true">${'<i></i>'.repeat(9)}</div><h1>${esc(g.name)}</h1><p class="subtitle">${esc(g.role)} · цифровой образ</p><div class="screen-subtitle" id="screenAnswer" aria-live="polite">${esc(g.greeting)}</div><form class="ask-form" id="askForm"><input id="question" aria-label="Ваш вопрос" placeholder="Задайте вопрос персонажу" maxlength="500" required><button class="button" id="sendQuestion">Спросить</button></form><div id="askError" class="error" role="alert"></div><label style="font-size:13px;color:#c7dedb"><input type="checkbox" id="voiceToggle" style="vertical-align:middle"> Озвучивать ответы</label><p class="note" style="color:#a6c1c6">Круглый предпросмотр иллюстрирует формат LED-дисплея. Синхронизация губ не реализована.</p></section>`;}
 function analytics(){const asks=state.events.filter(e=>e.type==='ask').length,opens=state.events.filter(e=>e.type==='route').length,likes=state.events.filter(e=>e.type==='feedback').length;return `<div class="page-heading"><div><div class="eyebrow muted">Результаты вашей демонстрации</div><h1>Статистика</h1><p>События этой рабочей области. Данные появляются после реальных действий.</p></div><button class="button secondary" id="exportEvents">Экспорт событий</button></div><div class="metric-grid"><div class="metric"><strong>${asks}</strong><span>Заданных вопросов</span></div><div class="metric"><strong>${opens}</strong><span>Открытий маршрутов</span></div><div class="metric"><strong>${likes}</strong><span>Полезных ответов</span></div></div><section class="panel"><h2>Как проверять гипотезу</h2><p>Пригласите 10 участников. Попросите выбрать гида, задать вопрос и открыть маршрут. Запишите, кому потребовалась помощь и сколько заняло выполнение.</p><p class="note">Счётчики отражают события, а не число уникальных туристов. Хранятся последние 200 событий; тексты вопросов в статистику не записываются.</p><a href="#guides" class="button">Начать проверку</a></section>`;}
-function about(){return `<article class="about"><div class="page-heading"><div><h1>О проекте</h1><p>Город говорит — конструктор цифровых гидов для туристических площадок.</p></div></div><h2>Что работает сейчас</h2><p>Выбор и создание персонажа, загрузка картинки, редактирование знаний, сохранение в браузере, диалог с поиском BM25, источники, маршруты, озвучка браузером и экран посетителя.</p><h2>Как формируется ответ</h2><p>Браузер обрабатывает вопрос, ранжирует материалы по BM25 и возвращает подходящий текст. Это работающий алгоритм информационного поиска, а не генеративная языковая модель. При недостаточном совпадении система сообщает, что сведений нет. Перефразирование и сложные вопросы могут требовать уточнения.</p><h2>Что ещё нужно проверить</h2><p>Работа с реальным LED-вентилятором, синхронизация губ, точная навигация, доступность маршрутов и спрос со стороны туристов. Маршруты здесь — демонстрационные эскизы; время и расстояния ориентировочные.</p><h2>Источники</h2><ul>${Object.values(sources).map(s=>`<li>${s.url?`<a href="${s.url}" target="_blank" rel="noopener">${esc(s.title)}</a>`:esc(s.title)} — ${esc(s.type)}</li>`).join('')}</ul><p class="note">Факты изложены кратко своими словами. Тексты гостиницы «Волга» вымышлены. Добавляя собственные материалы и изображения, используйте контент, которым вправе распоряжаться.</p><p class="note">Фотография кремля: Vityavo, Wikimedia Commons, CC0. <a target="_blank" rel="noopener" href="https://commons.wikimedia.org/wiki/File:Nizhny_Novgorod_Kremlin_(view_from_Volga).jpg">Страница фотографии</a>. Иллюстрации персонажей — условные векторные образы.</p><p class="note">Фото Зачатьевской башни и Нижне-Волжской набережной — Алексей Трефилов, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>. Фото Рождественской церкви — AlexTref871, CC BY-SA 4.0. Фото Чкаловской лестницы — WildPea, CC0. Кадрирование выполняется только при показе. <a href="./assets/CREDITS.txt">Ссылки на оригиналы и лицензии</a>.</p><h2>Данные и доступ</h2><p>Эта версия работает на GitHub Pages. Персонажи, картинки, знания и статистика сохраняются в IndexedDB только в этом браузере. Они не отправляются на сервер. Две вкладки одного браузера видят общий проект; на другом устройстве будет отдельная рабочая область. Для переноса скачайте проект и импортируйте JSON. Очистка данных сайта удаляет локальную копию.</p><section class="panel"><h2>Перенос и восстановление проекта</h2><p>Копия содержит персонажей, знания и события. Импорт создаёт содержимое в текущей рабочей области.</p><label class="field"><span>Импорт проекта или персонажа</span><input type="file" id="importProject" accept="application/json,.json"></label></section><a class="button secondary" href="#analytics">Посмотреть статистику</a></article>`;}
+function about(){return `<article class="about"><div class="page-heading"><div><h1>О проекте</h1><p>Город говорит — конструктор цифровых гидов для туристических площадок.</p></div></div><nav class="more-links" aria-label="Инструменты проекта"><a class="button secondary" href="#guides">Цифровые гиды ${icon('arrow')}</a><a class="button secondary" href="#studio">Студия гида ${icon('arrow')}</a></nav><h2>Что работает сейчас</h2><p>Выбор и создание персонажа, загрузка картинки, редактирование знаний, сохранение в браузере, диалог с поиском BM25, источники, маршруты, озвучка браузером и экран посетителя.</p><h2>Как формируется ответ</h2><p>Браузер обрабатывает вопрос, ранжирует материалы по BM25 и возвращает подходящий текст. Это работающий алгоритм информационного поиска, а не генеративная языковая модель. При недостаточном совпадении система сообщает, что сведений нет. Перефразирование и сложные вопросы могут требовать уточнения.</p><h2>Что ещё нужно проверить</h2><p>Работа с реальным LED-вентилятором, синхронизация губ, точная навигация, доступность маршрутов и спрос со стороны туристов. Маршруты здесь — демонстрационные эскизы; время и расстояния ориентировочные.</p><h2>Источники</h2><ul>${Object.values(sources).map(s=>`<li>${s.url?`<a href="${s.url}" target="_blank" rel="noopener">${esc(s.title)}</a>`:esc(s.title)} — ${esc(s.type)}</li>`).join('')}</ul><p class="note">Факты изложены кратко своими словами. Тексты гостиницы «Волга» вымышлены. Добавляя собственные материалы и изображения, используйте контент, которым вправе распоряжаться.</p><p class="note">Фотография кремля: Vityavo, Wikimedia Commons, CC0. <a target="_blank" rel="noopener" href="https://commons.wikimedia.org/wiki/File:Nizhny_Novgorod_Kremlin_(view_from_Volga).jpg">Страница фотографии</a>. Иллюстрации персонажей — условные векторные образы.</p><p class="note">Фото Зачатьевской башни и Нижне-Волжской набережной — Алексей Трефилов, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>. Фото Рождественской церкви — AlexTref871, CC BY-SA 4.0. Фото Чкаловской лестницы — WildPea, CC0. Кадрирование выполняется только при показе. <a href="./assets/CREDITS.txt">Ссылки на оригиналы и лицензии</a>.</p><h2>Данные и доступ</h2><p>Эта версия работает на GitHub Pages. Персонажи, картинки, знания и статистика сохраняются в IndexedDB только в этом браузере. Они не отправляются на сервер. Две вкладки одного браузера видят общий проект; на другом устройстве будет отдельная рабочая область. Для переноса скачайте проект и импортируйте JSON. Очистка данных сайта удаляет локальную копию.</p><section class="panel"><h2>Перенос и восстановление проекта</h2><p>Копия содержит персонажей, знания и события. Импорт создаёт содержимое в текущей рабочей области.</p><label class="field"><span>Импорт проекта или персонажа</span><input type="file" id="importProject" accept="application/json,.json"></label></section><a class="button secondary" href="#analytics">Посмотреть статистику</a></article>`;}
 async function choose(id,target='chat'){captureDraft();studioTab='profile';state.selected=id;try{await save();location.hash=target;render();}catch(e){toast(e.message);}}
-function render(){if(!ready)return;viewId++;askController?.abort();busy=false;const page=location.hash.slice(1)||'home';document.body.dataset.page=page;main.innerHTML=({home,guides:guidesPage,studio,routes:routePage,chat:chatPage,screen:screenPage,analytics,about}[page]||home)();document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===page));document.querySelectorAll('[data-nav]').forEach(a=>{if(a.dataset.nav===page)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});bindDiscovery();bind();status();updateViewport();if(page==='routes'&&!routeData&&!routeLoading&&!routeError)loadRoutes();}
-async function loadRoutes(){routeLoading=true;routeError='';const n=filter;try{const j=await api('/api/routes?minutes='+n);if(n===filter)routeData=j.routes;}catch(e){if(n===filter)routeError=e.message;}finally{routeLoading=false;if(location.hash==='#routes')render();}}
+function render(){if(!ready)return;viewId++;askController?.abort();busy=false;const page=location.hash.slice(1)||'home';document.body.dataset.page=page;main.innerHTML=({home,guides:guidesPage,studio,map:routePage,routes:routePage,chat:chatPage,screen:screenPage,analytics,about}[page]||home)();document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===page));document.querySelectorAll('[data-nav]').forEach(a=>{if(a.dataset.nav===page)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});renderHeader(page);bindDiscovery();bind();bindMap();status();updateViewport();if(['routes','map'].includes(page)&&!routeData&&!routeLoading&&!routeError)loadRoutes();}
+async function loadRoutes(){routeLoading=true;routeError='';const n=filter;try{const j=await api('/api/routes?minutes='+n);if(n===filter)routeData=j.routes;}catch(e){if(n===filter)routeError=e.message;}finally{routeLoading=false;if(['#routes','#map'].includes(location.hash))render();}}
 function download(name,text,type='application/json'){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function bind(){
  $('#guidePicker')?.addEventListener('change',e=>choose(e.target.value,'studio'));
@@ -119,7 +236,7 @@ function bind(){
   b.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const ids=['profile','knowledge','preview'];const i=ids.indexOf(studioTab);const next=e.key==='Home'?0:e.key==='End'?2:(i+(e.key==='ArrowRight'?1:2))%3;captureDraft();studioTab=ids[next];render();$('#studio-'+studioTab).focus();};
  });
  $('#previewChatFromCard')?.addEventListener('click',()=>location.hash='chat');
- $('#routePicker')?.addEventListener('change',e=>{selectedRoute=e.target.value;event('route',selectedRoute);save().catch(e=>toast(e.message));render();});
+ $('#routePicker')?.addEventListener('change',e=>{selectedRoute=e.target.value;resetMap();event('route',selectedRoute);save().catch(e=>toast(e.message));render();});
 
  $('#guideForm')?.addEventListener('input',captureDraft);$('#guideForm')?.addEventListener('change',captureDraft);
  $('#resetImage')?.addEventListener('click',()=>{captureDraft();drafts[state.selected] ||= structuredClone(guide());delete drafts[state.selected].image;keepDrafts();render();toast('Стандартный образ восстановлен в черновике');});
@@ -130,7 +247,7 @@ function bind(){
  $('#fullscreen')?.addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('.screen-layout').requestFullscreen();}catch{toast('Полноэкранный режим недоступен');}});
  $('#stopVoice')?.addEventListener('click',()=>{window.speechSynthesis?.cancel();document.body.classList.remove('speaking');});
  $('#resetSession')?.addEventListener('click',()=>{window.speechSynthesis?.cancel();history=[];render();});
- document.querySelectorAll('[data-chat]').forEach(b=>b.onclick=()=>choose(b.dataset.chat));document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>choose(b.dataset.edit,'studio'));document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>choose(b.dataset.select,'studio'));$('#newGuide')?.addEventListener('click',newGuide);$('#previewChat')?.addEventListener('click',()=>location.hash='chat');$('#screenStudio')?.addEventListener('click',openScreen);$('#guideForm')?.addEventListener('submit',saveGuide);$('#avatarUpload')?.addEventListener('change',uploadImage);$('#addDoc')?.addEventListener('click',()=>docModal());document.querySelectorAll('[data-doc]').forEach(b=>b.onclick=()=>docModal(b.dataset.doc));$('#exportGuide')?.addEventListener('click',()=>download('digital-guide.json',JSON.stringify(guide(),null,2)));document.querySelectorAll('[data-time]').forEach(b=>b.onclick=()=>{filter=Number(b.dataset.time);routeData=null;routeError='';render();});document.querySelectorAll('[data-route]').forEach(b=>b.onclick=()=>{selectedRoute=b.dataset.route;event('route',selectedRoute);save().catch(e=>toast(e.message));render();});$('#saveRoute')?.addEventListener('click',async()=>{if(!state.savedRoutes.includes(selectedRoute)){state.savedRoutes.push(selectedRoute);event('route',selectedRoute);try{await save();render();toast('Маршрут сохранён');}catch(e){toast(e.message);}}else toast('Маршрут уже в сохранённых');});$('#downloadRoute')?.addEventListener('click',()=>{const r=routeData.find(x=>x.id===selectedRoute);download('marshrut.txt',[r.name,r.minutes+' минут · '+r.distance,'',...r.stops.map((s,i)=>(i+1)+'. '+s),'',r.description].join('\n'),'text/plain;charset=utf-8');});$('#askForm')?.addEventListener('submit',ask);document.querySelectorAll('[data-question]').forEach(b=>b.onclick=()=>{$('#question').value=b.dataset.question;$('#askForm').requestSubmit();});$('#micButton')?.addEventListener('click',mic);$('#feedbackButton')?.addEventListener('click',async()=>{if(!history.some(x=>!x.user))return toast('Сначала задайте вопрос');event('feedback','helpful');try{await save();toast('Спасибо за оценку');}catch(e){toast(e.message);}});$('#exportEvents')?.addEventListener('click',()=>download('events.json',JSON.stringify(state.events,null,2)));}
+ document.querySelectorAll('[data-chat]').forEach(b=>b.onclick=()=>choose(b.dataset.chat));document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>choose(b.dataset.edit,'studio'));document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>choose(b.dataset.select,'studio'));$('#newGuide')?.addEventListener('click',newGuide);$('#previewChat')?.addEventListener('click',()=>location.hash='chat');$('#screenStudio')?.addEventListener('click',openScreen);$('#guideForm')?.addEventListener('submit',saveGuide);$('#avatarUpload')?.addEventListener('change',uploadImage);$('#addDoc')?.addEventListener('click',()=>docModal());document.querySelectorAll('[data-doc]').forEach(b=>b.onclick=()=>docModal(b.dataset.doc));$('#exportGuide')?.addEventListener('click',()=>download('digital-guide.json',JSON.stringify(guide(),null,2)));document.querySelectorAll('[data-time]').forEach(b=>b.onclick=()=>{filter=Number(b.dataset.time);routeData=null;routeError='';resetMap();render();});document.querySelectorAll('[data-route]').forEach(b=>b.onclick=()=>{selectedRoute=b.dataset.route;event('route',selectedRoute);save().catch(e=>toast(e.message));render();});$('#saveRoute')?.addEventListener('click',async()=>{if(!state.savedRoutes.includes(selectedRoute)){const id=selectedRoute;state.savedRoutes.push(id);event('route',id);try{await save();if(selectedRoute===id&&$('#saveRoute')){const button=$('#saveRoute');button.setAttribute('aria-pressed','true');button.setAttribute('aria-label','Маршрут сохранён');button.innerHTML=icon('check');}toast('Маршрут сохранён');}catch(e){toast(e.message);}}else toast('Маршрут уже в сохранённых');});$('#downloadRoute')?.addEventListener('click',()=>{const r=routeData.find(x=>x.id===selectedRoute);download('marshrut.txt',[r.name,r.minutes+' минут · '+r.distance,'',...r.stops.map((s,i)=>(i+1)+'. '+s),'',r.description].join('\n'),'text/plain;charset=utf-8');});$('#askForm')?.addEventListener('submit',ask);document.querySelectorAll('[data-question]').forEach(b=>b.onclick=()=>{$('#question').value=b.dataset.question;$('#askForm').requestSubmit();});$('#micButton')?.addEventListener('click',mic);$('#feedbackButton')?.addEventListener('click',async()=>{if(!history.some(x=>!x.user))return toast('Сначала задайте вопрос');event('feedback','helpful');try{await save();toast('Спасибо за оценку');}catch(e){toast(e.message);}});$('#exportEvents')?.addEventListener('click',()=>download('events.json',JSON.stringify(state.events,null,2)));}
 async function saveGuide(e){e.preventDefault();captureDraft();commitDrafts();const b=e.submitter;b.disabled=true;try{await save();render();toast('Персонаж сохранён');}catch(err){if($('#guideError'))$('#guideError').textContent=err.message;b.disabled=false;}}
 async function uploadImage(e){const file=e.target.files[0];if(!file)return;if(file.size>1024*1024||!['image/png','image/jpeg','image/webp'].includes(file.type)){toast('Выберите PNG, JPEG или WebP до 1 МБ');e.target.value='';return;}captureDraft();const id=state.selected;
  const reader=new FileReader();reader.onload=async()=>{try{const img=new Image();img.src=reader.result;await img.decode();drafts[id] ||= structuredClone(state.guides.find(g=>g.id===id));drafts[id].image=reader.result;keepDrafts();if(state.selected===id&&location.hash==='#studio')render();status();toast('Картинка добавлена в черновик. Сохраните персонажа.');}catch{toast('Не удалось прочитать изображение');}};reader.readAsDataURL(file);}
@@ -162,8 +279,23 @@ async function ask(e){
 function speak(text){if(!('speechSynthesis'in window))return toast('Озвучка недоступна в этом браузере');speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='ru-RU';const v=speechSynthesis.getVoices().find(v=>v.lang.startsWith('ru'));if(v)u.voice=v;u.rate=guide().voice==='calm'?.9:1.02;u.onstart=()=>{document.body.classList.add('speaking');document.querySelectorAll('.portrait').forEach(p=>p.classList.add('talking'));};u.onend=u.onerror=()=>{document.body.classList.remove('speaking');document.querySelectorAll('.portrait').forEach(p=>p.classList.remove('talking'));};speechSynthesis.speak(u);}
 function mic(){const Rec=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Rec)return toast('Распознавание речи недоступно. Введите вопрос текстом.');const r=new Rec();r.lang='ru-RU';r.onresult=e=>{$('#question').value=e.results[0][0].transcript;};r.onerror=()=>toast('Не удалось распознать речь. Проверьте разрешение микрофона.');r.start();toast('Слушаю ваш вопрос…');}
 function openScreen(){window.open(location.pathname+'#screen','gorod-visitor');}
-$('#screenTop').innerHTML=icon('screen');$('#screenTop').setAttribute('aria-label','Экран посетителя');$('#screenTop').onclick=openScreen;
-$('#mobileNav').innerHTML=[['home','Главная','home'],['chat','Диалог','chat'],['routes','Маршруты','route'],['studio','Студия','studio'],['about','Ещё','more']].map(([page,label,i])=>`<a href="#${page}" data-nav="${page}">${icon(i)}<span>${label}</span></a>`).join('');
+const brandMark=$('.brand svg').outerHTML;
+function renderHeader(page){
+ const header=$('.topbar');
+ if(page==='routes'||page==='map'){
+  const saved=state.savedRoutes.includes(selectedRoute);
+  header.innerHTML=`<a class="header-icon" href="#home" aria-label="На главную">${icon('caret')}</a>
+  <h1>${page==='map'?'Карта':'Мой маршрут'}</h1>
+  <button class="header-icon" id="saveRoute" aria-label="${saved?'Маршрут сохранён':'Сохранить маршрут'}" aria-pressed="${saved}" ${routeData?'':'disabled'}>${icon(saved?'check':'save')}</button>
+  <button class="header-icon" id="routeMenu" aria-label="Выбрать прогулку" ${routeData?'':'disabled'}>${icon('more')}</button>`;
+  $('#routeMenu').onclick=()=>{$('#routeOptions').scrollIntoView({block:'start'});$('#routePicker').focus({preventScroll:true});};
+  return;
+ }
+ header.innerHTML=`<a href="#home" class="brand">${brandMark}<span>${page==='home'?'Мой<br>Нижний Новгород':'Город говорит<small class="brand-light">Нижний Новгород</small>'}</span></a>
+ <button type="button" class="header-icon" id="screenTop" aria-label="Экран посетителя">${icon('screen')}</button>`;
+ $('#screenTop').onclick=openScreen;
+}
+$('#mobileNav').innerHTML=[['home','Главная','home'],['map','Карта','map'],['routes','Маршруты','route'],['chat','История','clock'],['about','Ещё','more']].map(([page,label,i])=>`<a href="#${page}" data-nav="${page}">${icon(i)}<span>${label}</span></a>`).join('');
 
 window.addEventListener('hashchange',()=>{captureDraft();if(location.hash==='#studio')studioTab='profile';closeModal();document.body.classList.remove('speaking');window.speechSynthesis?.cancel();render();window.scrollTo(0,0);});
 async function receiveUpdate(){remotePending=true;if(busy||pendingSaves||dirty||Object.keys(drafts).length||$('#docForm')){status();return;}const view=viewId;try{const j=await api('/api/state');if(busy||pendingSaves||dirty||Object.keys(drafts).length||$('#docForm')||view!==viewId)return;if(j.revision>revision){state=j.state;revision=j.revision;window.speechSynthesis?.cancel();document.body.classList.remove('speaking');render();}remotePending=false;status();}catch{}}

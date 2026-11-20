@@ -1,5 +1,5 @@
-import {initialState,routes} from './data.mjs';
-import {answer,validateState} from './engine.mjs';
+import {initialState,routes} from './data.mjs?v=river-design';
+import {answer,validateState} from './engine.mjs?v=river-design';
 
 // IndexedDB serializes read/write transactions across tabs. The revision check
 // and write share one transaction, so two editors cannot overwrite each other.
@@ -36,7 +36,7 @@ async function workspace(update){
 export async function request(path,{method='GET',body,signal}={}){
  signal?.throwIfAborted();
  if(path==='/api/state')return workspace(method==='PUT'?body:undefined);
- if(path.startsWith('/api/routes')){const minutes=Number(new URL(path,'https://local.invalid').searchParams.get('minutes')||90);return {routes:routes.filter(r=>r.minutes<=minutes)};}
+ if(path.startsWith('/api/routes')){const minutes=Number(new URL(path,'https://local.invalid').searchParams.get('minutes')||180);return {routes:routes.filter(r=>r.minutes<=minutes)};}
  if(path==='/api/ask'){
   const {state}=await workspace();signal?.throwIfAborted();
   const guide=state.guides.find(g=>g.id===body.guideId);

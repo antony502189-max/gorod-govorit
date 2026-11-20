@@ -21,3 +21,7 @@ https://commons.wikimedia.org/wiki/File:Чкаловская_лестница._�
 Inter — SIL Open Font License, см. Inter-OFL.txt.
 Phosphor Icons — MIT, см. Phosphor-LICENSE.txt.
 Иллюстрации персонажей — условные векторные образы исходного MVP.
+
+Панорама (volga-kremlin.webp) — иллюстрация ImageGen из проекта «Город и реки».
+Подложка маршрутов (route-map.webp) и линия прогулки по кремлю и набережной — © OpenStreetMap contributors, ODbL.
+https://www.openstreetmap.org/copyright

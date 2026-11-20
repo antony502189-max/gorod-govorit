@@ -1,3 +1,5 @@
+import {routes} from './data.mjs?v=river-design';
+
 // Russian suffix normalization follows Snowball's RV/R2 rules.
 // Specification: https://snowballstem.org/algorithms/russian/stemmer.html
 const stop=new Set('а и но это как что где когда кто какой какая какие какое мне меня ты вы ваш ваша ваше ваши вашем его её или о об по на в во из за у с со для до ли бы есть расскажи расскажите пожалуйста узнать хочу скажи про вас самом деле сколько разрешены таком каком перечислите такое находится стоят почитать'.split(' '));
@@ -52,7 +54,7 @@ export function validateState(s){
  }
  if(!ids.has(s.selected))fail('Выбранный персонаж не существует.');
  if(!Array.isArray(s.events)||s.events.length>200||s.events.some(e=>!object(e)||!['ask','route','feedback'].includes(e.type)||!str(e.at,40,1)||!str(e.guide,60,1)||!str(e.value,100)))fail('Некорректные события.');
- if(!Array.isArray(s.savedRoutes)||s.savedRoutes.length>3||new Set(s.savedRoutes).size!==s.savedRoutes.length||s.savedRoutes.some(x=>!['river','kremlin','literature'].includes(x)))fail('Некорректные маршруты.');
+ if(!Array.isArray(s.savedRoutes)||new Set(s.savedRoutes).size!==s.savedRoutes.length||s.savedRoutes.some(x=>!routes.some(route=>route.id===x)))fail('Некорректные маршруты.');
  if(JSON.stringify(s).length>2100000)fail('Рабочая область слишком велика. Уменьшите изображения.');
  return s;
 }
