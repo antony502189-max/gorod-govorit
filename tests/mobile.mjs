@@ -11,12 +11,12 @@ try{
  await check('Small and tall phones: no overflow, readable input, reachable navigation',async()=>{
   for(const [width,height] of [[320,568],[360,740],[390,844],[430,932]]){
    await p.setViewportSize({width,height});
-   for(const route of ['home','guides','studio','chat','routes','screen','about','analytics']){
-    await p.goto(base+'#'+route);await p.locator('main h1:visible,main h2:visible').first().waitFor();if(route==='routes')await p.locator('#routePicker').waitFor();
+   for(const route of ['home','studio','chat','map','screen','about','analytics']){
+    await p.goto(base+'#'+route);await p.locator(route==='map'?'.map-placeholder':'main h1:visible,main h2:visible').first().waitFor();
     assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width} ${route}: overflow`);
     assert.ok(await p.locator('input:not([type=file]):not([type=checkbox]):not([type=color]),textarea,select').evaluateAll(es=>es.filter(e=>e.offsetWidth).every(e=>parseFloat(getComputedStyle(e).fontSize)>=16)),`${route}: input font triggers iOS zoom`);
     if(route!=='screen'){const r=await p.locator('#mobileNav').boundingBox();assert.ok(r.y+r.height<=height+1);}
-    if(['home','chat','routes','studio'].includes(route))await p.screenshot({path:`qa/mobile/${route}-${width}.png`,fullPage:false});
+    if(['home','chat','map','studio'].includes(route))await p.screenshot({path:`qa/mobile/${route}-${width}.png`,fullPage:false});
    }
   }
  });
@@ -35,35 +35,24 @@ try{
   assert.ok(await p.locator('body').evaluate(e=>e.classList.contains('keyboard-open')));assert.ok(!await p.locator('#mobileNav').isVisible());const b=await p.locator('#sendQuestion').boundingBox();assert.ok(b.y+b.height<=420);await p.screenshot({path:'qa/mobile/chat-keyboard-layout.png'});
   await p.evaluate(()=>{delete window.visualViewport.height;window.visualViewport.dispatchEvent(new Event('resize'));});
  });
- await check('Routes: selector, time filter, header save button and downloadable plan',async()=>{
-  await p.goto(base+'#routes');await p.locator('#routePicker').selectOption('kremlin');await p.getByRole('heading',{name:'Кремль и городские панорамы',exact:true}).waitFor();await p.locator('#saveRoute').click();await p.locator('#saveRoute[aria-pressed=true]').waitFor();await p.locator('[data-time="30"]').click();await p.locator('#routePicker').waitFor();assert.equal(await p.locator('#routePicker option').count(),1);const r=await p.locator('#saveRoute').boundingBox();assert.ok(r.y>=0&&r.y+r.height<100);const d=p.waitForEvent('download');await p.locator('#downloadRoute').click();assert.equal((await d).suggestedFilename(),'marshrut.txt');
+ await check('The map tab is an empty template and old route links open it',async()=>{
+  await p.goto(base+'#routes');
+  await p.locator('.map-placeholder').waitFor();
+  assert.equal(new URL(p.url()).hash,'#map');
+  assert.equal(await p.locator('main').innerText(),'');
+  assert.deepEqual(await p.locator('#mobileNav a').allTextContents(),['Главная','Карта','Ещё']);
+  assert.equal(await p.locator('#mobileNav a.active').innerText(),'Карта');
+  assert.equal(await p.locator('.topbar').isVisible(),false);
+  await p.locator('#mobileNav [href="#home"]').click();
+  await p.locator('.guide-library').waitFor();
+  await p.locator('.guide-archive-portrait').evaluateAll(photos=>Promise.all(photos.map(photo=>photo.decode())));
+  assert.deepEqual(await p.locator('.guide-library h2').allTextContents(),['Мобильный гид','Александр Попов','Николай Лобачевский','Кузьма Минин','Николай Добролюбов']);
+  assert.equal(await p.locator('#newGuide,.studio-invite').count(),0);
+  assert.equal(await p.locator('main > *').count(),1);
+  await p.goto(base+'#guides');
+  await p.waitForURL(base+'#home');
+  assert.equal(await p.locator('a[href="#routes"]').count(),0);
  });
- await check('Reference screens: featured walk, labels, zoom, stops and bookmarks',async()=>{
-  await p.setViewportSize({width:390,height:844});
-  await p.goto(base+'#home');
-  const placeSave=p.locator('[data-place-save=kremlin]');
-  await placeSave.click();
-  await p.reload();
-  assert.equal(await placeSave.getAttribute('aria-pressed'),'true');
-  await p.locator('#featuredRoute').click();
-  await p.getByRole('heading',{name:'Прогулка по кремлю и набережной'}).waitFor();
-  assert.equal(await p.locator('[data-timeline-stop]').count(),4);
-  const canvas=p.locator('.route-map-art > svg');
-  const original=await canvas.getAttribute('viewBox');
-  await p.locator('[data-map-action=in]').click();
-  assert.notEqual(await canvas.getAttribute('viewBox'),original);
-  await p.locator('[data-map-action=reset]').click();
-  assert.equal(await canvas.getAttribute('viewBox'),original);
-  await p.locator('[data-map-action=labels]').click();
-  assert.equal(await p.locator('.route-map').getAttribute('data-labels'),'false');
-  await p.locator('[data-timeline-stop="0"]').click();
-  assert.equal(await p.locator('#selectedStop').innerText(),'Нижегородский кремль');
-  assert.equal(await p.locator('[data-map-stop="0"]').getAttribute('aria-pressed'),'true');
-  await p.locator('#saveRoute').click();
-  await p.locator('#saveRoute[aria-pressed=true]').waitFor();
-  await p.reload();
-  assert.equal(await p.locator('#saveRoute').getAttribute('aria-pressed'),'true');
- });
- await check('Touch targets and reduced motion',async()=>{await p.goto(base+'#home');const small=await p.locator('button:visible,.quick-actions a,#mobileNav a').evaluateAll(es=>es.filter(e=>e.getBoundingClientRect().height<44).map(e=>e.textContent));assert.deepEqual(small,[]);await p.emulateMedia({reducedMotion:'reduce'});await p.goto(base+'#screen');assert.equal(await p.locator('.bars i').first().evaluate(e=>getComputedStyle(e).animationName),'none');});
+ await check('Touch targets and reduced motion',async()=>{await p.goto(base+'#home');const small=await p.locator('button:visible,#mobileNav a').evaluateAll(es=>es.filter(e=>e.getBoundingClientRect().height<44).map(e=>e.textContent));assert.deepEqual(small,[]);await p.emulateMedia({reducedMotion:'reduce'});await p.goto(base+'#screen');assert.equal(await p.locator('.bars i').first().evaluate(e=>getComputedStyle(e).animationName),'none');});
  assert.deepEqual(errors,[]);
 }finally{fs.writeFileSync('qa/mobile/results.json',JSON.stringify({checks,errors},null,2));await browser.close();}

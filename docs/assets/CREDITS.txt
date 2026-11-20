@@ -29,3 +29,18 @@ https://www.openstreetmap.org/copyright
 PT Serif — ParaType, SIL Open Font License 1.1 (PT-Serif-OFL.txt).
 
 Образ Попова, положения губ и демонстрация — проект «Проектор Попова». Голос Piper Denis. Происхождение материалов и атрибуция бюста HackSpace Taganrog (CC BY 4.0): https://github.com/antony502189-max/popov-projector/blob/main/CREDITS.md
+
+lobachevsky.jpg — Лев Крюков, портрет Н. И. Лобачевского, первая половина XIX века. Общественное достояние.
+https://commons.wikimedia.org/wiki/File:Lobachevsky.jpg
+
+Портреты на главной (guide-portraits/*.webp): кадрирование, удаление фона, коррекция тона.
+Максим Горький — Bain News Service, 1910, Library of Congress, ggbain.04931. Общественное достояние.
+https://commons.wikimedia.org/wiki/File:Maxim_Gorky.jpg
+Александр Степанович Попов — архивная фотография, автор неизвестен. Общественное достояние.
+https://commons.wikimedia.org/wiki/File:Alexander_Stepanovich_Popov.jpg
+Николай Александрович Добролюбов — Ж. Грилле, Неаполь, май 1861 года. Общественное достояние.
+https://commons.wikimedia.org/wiki/File:Dobrolubov_1861.jpg
+Бюст Николая Лобачевского — Вячеслав Кириллин, 2024. Фотография и вырезка из неё — CC BY-SA 4.0.
+https://commons.wikimedia.org/wiki/File:Lobachevsky_monument,_Kazan_(2024-04-17)_01.jpg
+Памятник Кузьме Минину в Нижнем Новгороде — Дина Байбулатова. Фотография и вырезка из неё — CC BY-SA 4.0.
+https://commons.wikimedia.org/wiki/File:Минин.jpg

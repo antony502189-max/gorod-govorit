@@ -1,3 +1,4 @@
+import './compile-templates.mjs';
 import {cp,mkdir,writeFile,readdir,readFile} from 'node:fs/promises';
 await mkdir('dist',{recursive:true});
 await cp('docs','dist',{recursive:true});

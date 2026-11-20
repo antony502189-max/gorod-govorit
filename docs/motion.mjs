@@ -43,6 +43,9 @@ export function movePortrait(before, target) {
   if (!before || !target?.animate || preference.matches || document.hidden) return false;
   const box = visibleBox(target);
   if (!box) return false;
+  const scale = before.box.width / box.width;
+  // Different crops crossfade in place so the moving face keeps its proportions.
+  if (Math.abs(before.box.height / (box.height * scale) - 1) > .12) return false;
   const layer = document.createElement('div');
   layer.className = 'moving-portrait';
   layer.setAttribute('aria-hidden', 'true');
@@ -57,12 +60,10 @@ export function movePortrait(before, target) {
 
   const x = before.box.left - box.left;
   const y = before.box.top - box.top;
-  const sx = before.box.width / box.width;
-  const sy = before.box.height / box.height;
   const animation = layer.animate([
-    { transform: `translate(${x}px, ${y}px) scale(${sx}, ${sy})`, borderRadius: before.radius },
+    { transform: `translate(${x}px, ${y}px) scale(${scale})`, borderRadius: before.radius },
     { transform: 'none', borderRadius: getComputedStyle(target).borderRadius },
-  ], { duration: 340, easing: settle, fill: 'both' });
+  ], { duration: 245, easing: settle, fill: 'both' });
 
   function stop() {
     if (movingPortrait?.stop !== stop) return;
@@ -80,6 +81,7 @@ preference.addEventListener('change', event => {
   if (event.matches) stopPortraitMotion();
 });
 window.addEventListener('resize', stopPortraitMotion);
+window.addEventListener('scroll', stopPortraitMotion, { passive: true });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) stopPortraitMotion();
 });

@@ -24,7 +24,7 @@
   width: calc((100% - 10px) / 10);
   height: 2px;
   border-radius: 3px;
-  background: #0a747e;
+  background: var(--blue);
   content: "";
   opacity: 0;
   pointer-events: none;
@@ -57,8 +57,8 @@
   animation: microphone-acknowledge 900ms ease-out 2;
 }
 @keyframes microphone-acknowledge {
-  from { box-shadow: 0 0 0 0 #943c3e55; }
-  to { box-shadow: 0 0 0 9px #943c3e00; }
+  from { box-shadow: 0 0 0 0 #147dc855; }
+  to { box-shadow: 0 0 0 9px #147dc800; }
 }
 
 .moving-portrait {
