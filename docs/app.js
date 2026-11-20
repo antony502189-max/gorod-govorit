@@ -3,7 +3,7 @@ import { h, render as renderVue } from './vendor/vue.esm-browser.prod.mjs';
 import { AboutPage, AppHeader, AppNavigation, GuideCatalogue, MapPage, StatisticsPage, VisitorScreen, highlightNavigation } from './views.mjs?v=text-only';
 import {chkalovGuide, gorodovoyGuide, mininGuide} from './historical-guides.mjs';
 import {projectorGuide, popovQuestions, answerPopov} from './popov-guide.mjs';
-import { openQrScanner } from './qr-scanner.mjs';
+import { openQrScanner } from './qr-scanner.mjs?v=camera-qr';
 import { enterStationRoute, StationConversation } from './station.mjs';
 import { ConversationPage } from './conversation.mjs?v=text-only';
 import {cityPhotos} from './city-photos.mjs';

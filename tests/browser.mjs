@@ -172,7 +172,37 @@ try{
   } finally {await tab.close();}
  });
  await check('320 and 390px: all seven screens fit',async()=>{for(const width of [320,390]){await m.setViewportSize({width,height:844});for(const route of ['home','studio','chat','map','screen','about','analytics']){await m.goto(base+'#'+route);await m.locator('main').waitFor();if(route==='map')await m.locator('.projection-map').waitFor();else await m.locator('main h1:visible, main h2:visible').first().waitFor();await m.evaluate(()=>document.fonts.ready);assert.ok(await m.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),route+' overflow '+width);if(['home','chat','map','studio'].includes(route))await m.screenshot({path:`qa/${route}-${width}.png`,fullPage:true});}}});
- await check('Mobile bottom navigation and guide access',async()=>{await m.goto(base);await m.locator('#mobileNav [href="#map"]').click();await m.locator('.projection-map').waitFor();const scan=m.getByRole('button',{name:'Сканировать QR-код'});await scan.click();const scanner=m.getByRole('dialog',{name:'Сканировать QR-код'});await scanner.waitFor();await scanner.getByRole('button',{name:'Выбрать фото'}).waitFor();await m.keyboard.press('Escape');await scanner.waitFor({state:'hidden'});await m.goto(base+'#about');await m.getByRole('heading',{name:'О проекте'}).waitFor();assert.equal(await m.locator('main a[href="#studio"], main a[href="#analytics"], #importProject').count(),0);assert.equal(await m.locator('#workspaceStatus').isVisible(),false);await m.getByRole('link',{name:'Выбрать гида'}).click();await m.getByRole('button',{name:'Поговорить: Максим Горький'}).click();await m.getByRole('heading',{name:'Максим Горький'}).waitFor();});
+ await check('Mobile bottom navigation and guide access',async()=>{
+  await m.addInitScript(()=>{
+   Object.defineProperty(navigator,'mediaDevices',{value:{
+    getUserMedia:async options=>{
+     window.qrCameraRequest=options;
+     throw new DOMException('Permission denied','NotAllowedError');
+    },
+   }});
+  });
+  await m.goto(base);
+  await m.reload();
+  await m.locator('#mobileNav [href="#map"]').click();
+  await m.locator('.projection-map').waitFor();
+  const scan=m.getByRole('button',{name:'Сканировать QR-код'});
+  await scan.click();
+  const scanner=m.getByRole('dialog',{name:'Сканировать QR-код'});
+  await scanner.getByRole('button',{name:'Включить камеру'}).waitFor();
+  assert.equal(await scanner.locator('input[type="file"]').count(),0);
+  assert.equal(await scanner.getByRole('button',{name:'Выбрать фото'}).count(),0);
+  assert.equal(await m.evaluate(()=>window.qrCameraRequest.video.facingMode.ideal),'environment');
+  assert.match(await scanner.getByRole('status').textContent(),/Проверьте доступ/);
+  await m.keyboard.press('Escape');
+  await scanner.waitFor({state:'hidden'});
+  await m.goto(base+'#about');
+  await m.getByRole('heading',{name:'О проекте'}).waitFor();
+  assert.equal(await m.locator('main a[href="#studio"], main a[href="#analytics"], #importProject').count(),0);
+  assert.equal(await m.locator('#workspaceStatus').isVisible(),false);
+  await m.getByRole('link',{name:'Выбрать гида'}).click();
+  await m.getByRole('button',{name:'Поговорить: Максим Горький'}).click();
+  await m.getByRole('heading',{name:'Максим Горький'}).waitFor();
+ });
  await check('Tourist languages persist and translate the catalogue, map and guide answers',async()=>{
   const tab=await browser.newPage({viewport:{width:320,height:740},isMobile:true,reducedMotion:'reduce'});
   try {
