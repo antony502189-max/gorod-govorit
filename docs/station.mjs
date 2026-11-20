@@ -302,10 +302,13 @@ export const StationConversation = {
       toggleAudio, record, uploadClip, decode, clearClip};
   },
   template: `<section class="conversation station-conversation" data-mode="text" data-guide="popov"
-    :data-phase="active ? 'thinking' : 'ready'" :data-joined="!!ui.token" :aria-label="t('Разговор с Поповым у проектора')">
+    :data-phase="active ? 'thinking' : 'ready'" :aria-label="t('Разговор с Поповым у проектора')">
     <header class="conversation-header">
       <a href="#home" class="conversation-back round-control" :aria-label="t('К списку гидов')"><AppIcon name="caret" /></a>
-      <div class="conversation-identity"><h1>{{ guide.name }}</h1><p role="status">{{ connection }}</p></div>
+      <div class="conversation-avatar" aria-hidden="true">
+        <div class="avatar-frame"><div class="avatar-image"><PortraitImage :guide="guide" use-archive /></div></div>
+      </div>
+      <div class="conversation-identity"><h1>{{ guide.name }}</h1></div>
     </header>
     <div ref="transcript" class="conversation-log" id="messages" role="log" :aria-label="t('История сообщений')" tabindex="0">
       <div class="conversation-turns">
@@ -326,10 +329,8 @@ export const StationConversation = {
         <button v-for="question in questions" :key="question" type="button" @click="pick(question)">{{ question }}</button>
       </div>
     </div>
-    <div v-if="ui.token" class="conversation-avatar" aria-hidden="true">
-      <div class="avatar-frame"><div class="avatar-image"><PortraitImage :guide="guide" use-archive /></div></div>
-    </div>
     <div class="conversation-composer">
+      <p class="station-access" role="status">{{ connection }}</p>
       <p class="station-access" role="status">{{ access }}</p>
       <button v-if="!ui.token && valid" type="button" class="button primary station-join"
         :disabled="!ui.online || !!ui.working" @click="join">{{ t('Начать разговор') }}</button>

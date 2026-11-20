@@ -177,7 +177,6 @@ body[data-page="guides"] main, body[data-page="studio"] main { padding: 28px 16p
 .conversation { --gutter: 16px; }
 .conversation-header { gap: 8px; padding-inline: 16px; min-height: 64px; }
 .conversation-identity h1 { font: 500 1.375rem/1.2 var(--type); }
-.conversation-identity p { font: 400 .9375rem/1.25 var(--type); }
 .studio-tabs { background: var(--track); border-radius: 12px; padding: 4px; }
 .studio-tabs button { height: auto; min-height: 36px; border-radius: 8px; }
 .conversation-topic-list button { border-color: var(--blue); border-radius: 8px; color: var(--blue); font-size: .9375rem; }
@@ -272,8 +271,7 @@ body[data-page="guides"] { isolation:isolate; }
 .screen-layout { background:linear-gradient(155deg,#152a49,#101c32 65%); border-radius:18px; }
 .screen-layout .screen-top .button, .screen-controls .button { background:var(--glass-solid); color:var(--blue); }
 .screen-layout .portrait:has(.illustrated-portrait) { background:radial-gradient(ellipse at bottom,#41627b,transparent 72%); }
-.screen-layout .portrait img:is(.illustrated-portrait,.archival-portrait),
-.avatar-image img.archival-portrait { object-fit:contain; }
+.screen-layout .portrait img:is(.illustrated-portrait,.archival-portrait) { object-fit:contain; }
 @media(prefers-reduced-transparency:reduce) {
   #mobileNav, body[data-page] .topbar { backdrop-filter:none; -webkit-backdrop-filter:none; background:var(--glass-solid); }
 }
@@ -312,7 +310,6 @@ body[data-page="home"] .guide-collection { margin:0 16px 24px; }
     var(--guide-city) var(--guide-city-position) / cover;
 }
 .conversation[data-guide="gorky"] .avatar-image img.archival-portrait {
-  object-position:center bottom;
   filter:drop-shadow(1px 2px 7px #152b4247);
 }
 .guide-card[data-guide="popov"] { --guide-city: url("./assets/chkalov.jpg"); --guide-city-position: 71% 39%; }

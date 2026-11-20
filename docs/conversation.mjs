@@ -118,9 +118,14 @@ export const ConversationPage = {
   template: `<section ref="root" class="conversation" data-mode="text" data-phase="ready" :data-look="look" :data-guide="guide.id" :aria-label="t('Диалог с персонажем')">
     <header class="conversation-header">
       <a href="#home" class="conversation-back round-control" :aria-label="t('К списку гидов')" :title="t('К списку гидов')"><AppIcon name="caret" /></a>
+      <div class="conversation-avatar" aria-hidden="true">
+        <div class="avatar-frame">
+          <div class="avatar-image"><PortraitImage :guide="guide" :use-archive="guide.id === 'gorky'" /></div>
+        </div>
+        <span class="avatar-speaking"><i></i><i></i><i></i></span>
+      </div>
       <div class="conversation-identity">
         <h1>{{ guide.name }}</h1>
-        <p>{{ guide.role }}{{ guide.id === 'gorky' ? ' · ' + t('Цифровой образ') : '' }}</p>
       </div>
     </header>
     <div class="conversation-log" id="messages" role="log" :aria-label="t('История сообщений')" tabindex="0">
@@ -131,12 +136,6 @@ export const ConversationPage = {
     </div>
     <div class="conversation-topics" :hidden="!questions.length">
       <div class="conversation-topic-list" role="group" :aria-label="t('Темы для разговора')"><button v-for="question in questions" :key="question" type="button" :data-question="question">{{ question }}</button></div>
-    </div>
-    <div class="conversation-avatar" aria-hidden="true">
-      <div class="avatar-frame">
-        <div class="avatar-image"><PortraitImage :guide="guide" :use-archive="guide.id === 'gorky'" /></div>
-      </div>
-      <span class="avatar-speaking"><i></i><i></i><i></i></span>
     </div>
     <div class="conversation-composer">
       <form class="conversation-form" id="askForm">

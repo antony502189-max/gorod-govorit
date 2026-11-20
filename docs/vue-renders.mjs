@@ -1225,20 +1225,20 @@ const { resolveComponent: _resolveComponent, createVNode: _createVNode, createEl
 const _hoisted_1 = ["data-look", "data-guide", "aria-label"]
 const _hoisted_2 = { class: "conversation-header" }
 const _hoisted_3 = ["aria-label", "title"]
-const _hoisted_4 = { class: "conversation-identity" }
-const _hoisted_5 = ["aria-label"]
-const _hoisted_6 = { class: "conversation-turns" }
-const _hoisted_7 = { class: "message conversation-greeting" }
-const _hoisted_8 = { class: "message-text reply-markdown" }
-const _hoisted_9 = ["hidden"]
-const _hoisted_10 = ["aria-label"]
-const _hoisted_11 = ["data-question"]
-const _hoisted_12 = {
+const _hoisted_4 = {
   class: "conversation-avatar",
   "aria-hidden": "true"
 }
-const _hoisted_13 = { class: "avatar-frame" }
-const _hoisted_14 = { class: "avatar-image" }
+const _hoisted_5 = { class: "avatar-frame" }
+const _hoisted_6 = { class: "avatar-image" }
+const _hoisted_7 = { class: "conversation-identity" }
+const _hoisted_8 = ["aria-label"]
+const _hoisted_9 = { class: "conversation-turns" }
+const _hoisted_10 = { class: "message conversation-greeting" }
+const _hoisted_11 = { class: "message-text reply-markdown" }
+const _hoisted_12 = ["hidden"]
+const _hoisted_13 = ["aria-label"]
+const _hoisted_14 = ["data-question"]
 const _hoisted_15 = { class: "conversation-composer" }
 const _hoisted_16 = {
   class: "conversation-form",
@@ -1249,8 +1249,8 @@ const _hoisted_18 = ["aria-label", "title"]
 
 return function render(_ctx, _cache) {
   const _component_AppIcon = _resolveComponent("AppIcon")
-  const _component_StoredMessage = _resolveComponent("StoredMessage")
   const _component_PortraitImage = _resolveComponent("PortraitImage")
+  const _component_StoredMessage = _resolveComponent("StoredMessage")
 
   return (_openBlock(), _createElementBlock("section", {
     ref: "root",
@@ -1271,8 +1271,22 @@ return function render(_ctx, _cache) {
         _createVNode(_component_AppIcon, { name: "caret" })
       ], 8 /* PROPS */, _hoisted_3),
       _createElementVNode("div", _hoisted_4, [
-        _createElementVNode("h1", null, _toDisplayString(_ctx.guide.name), 1 /* TEXT */),
-        _createElementVNode("p", null, _toDisplayString(_ctx.guide.role) + _toDisplayString(_ctx.guide.id === 'gorky' ? ' · ' + _ctx.t('Цифровой образ') : ''), 1 /* TEXT */)
+        _createElementVNode("div", _hoisted_5, [
+          _createElementVNode("div", _hoisted_6, [
+            _createVNode(_component_PortraitImage, {
+              guide: _ctx.guide,
+              "use-archive": _ctx.guide.id === 'gorky'
+            }, null, 8 /* PROPS */, ["guide", "use-archive"])
+          ])
+        ]),
+        _cache[0] || (_cache[0] = _createElementVNode("span", { class: "avatar-speaking" }, [
+          _createElementVNode("i"),
+          _createElementVNode("i"),
+          _createElementVNode("i")
+        ], -1 /* CACHED */))
+      ]),
+      _createElementVNode("div", _hoisted_7, [
+        _createElementVNode("h1", null, _toDisplayString(_ctx.guide.name), 1 /* TEXT */)
       ])
     ]),
     _createElementVNode("div", {
@@ -1282,9 +1296,9 @@ return function render(_ctx, _cache) {
       "aria-label": _ctx.t('История сообщений'),
       tabindex: "0"
     }, [
-      _createElementVNode("div", _hoisted_6, [
-        _createElementVNode("div", _hoisted_7, [
-          _createElementVNode("div", _hoisted_8, _toDisplayString(_ctx.guide.greeting), 1 /* TEXT */)
+      _createElementVNode("div", _hoisted_9, [
+        _createElementVNode("div", _hoisted_10, [
+          _createElementVNode("div", _hoisted_11, _toDisplayString(_ctx.guide.greeting), 1 /* TEXT */)
         ]),
         (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.binding.messages, (message, index) => {
           return (_openBlock(), _createBlock(_component_StoredMessage, {
@@ -1294,7 +1308,7 @@ return function render(_ctx, _cache) {
           }, null, 8 /* PROPS */, ["message", "render-message"]))
         }), 128 /* KEYED_FRAGMENT */))
       ])
-    ], 8 /* PROPS */, _hoisted_5),
+    ], 8 /* PROPS */, _hoisted_8),
     _createElementVNode("div", {
       class: "conversation-topics",
       hidden: !_ctx.questions.length
@@ -1309,25 +1323,10 @@ return function render(_ctx, _cache) {
             key: question,
             type: "button",
             "data-question": question
-          }, _toDisplayString(question), 9 /* TEXT, PROPS */, _hoisted_11))
+          }, _toDisplayString(question), 9 /* TEXT, PROPS */, _hoisted_14))
         }), 128 /* KEYED_FRAGMENT */))
-      ], 8 /* PROPS */, _hoisted_10)
-    ], 8 /* PROPS */, _hoisted_9),
-    _createElementVNode("div", _hoisted_12, [
-      _createElementVNode("div", _hoisted_13, [
-        _createElementVNode("div", _hoisted_14, [
-          _createVNode(_component_PortraitImage, {
-            guide: _ctx.guide,
-            "use-archive": _ctx.guide.id === 'gorky'
-          }, null, 8 /* PROPS */, ["guide", "use-archive"])
-        ])
-      ]),
-      _cache[0] || (_cache[0] = _createElementVNode("span", { class: "avatar-speaking" }, [
-        _createElementVNode("i"),
-        _createElementVNode("i"),
-        _createElementVNode("i")
-      ], -1 /* CACHED */))
-    ]),
+      ], 8 /* PROPS */, _hoisted_13)
+    ], 8 /* PROPS */, _hoisted_12),
     _createElementVNode("div", _hoisted_15, [
       _createElementVNode("form", _hoisted_16, [
         _createElementVNode("input", {
@@ -1367,43 +1366,45 @@ return function render(_ctx, _cache) {
 export const stationConversationRender = (Vue => {
 const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, withModifiers: _withModifiers } = Vue
 
-const _hoisted_1 = ["data-phase", "data-joined", "aria-label"]
+const _hoisted_1 = ["data-phase", "aria-label"]
 const _hoisted_2 = { class: "conversation-header" }
 const _hoisted_3 = ["aria-label"]
-const _hoisted_4 = { class: "conversation-identity" }
-const _hoisted_5 = { role: "status" }
-const _hoisted_6 = ["aria-label"]
-const _hoisted_7 = { class: "conversation-turns" }
-const _hoisted_8 = { class: "message conversation-greeting" }
-const _hoisted_9 = { class: "message-text reply-markdown" }
-const _hoisted_10 = { class: "message user" }
-const _hoisted_11 = { class: "message-text" }
-const _hoisted_12 = {
+const _hoisted_4 = {
+  class: "conversation-avatar",
+  "aria-hidden": "true"
+}
+const _hoisted_5 = { class: "avatar-frame" }
+const _hoisted_6 = { class: "avatar-image" }
+const _hoisted_7 = { class: "conversation-identity" }
+const _hoisted_8 = ["aria-label"]
+const _hoisted_9 = { class: "conversation-turns" }
+const _hoisted_10 = { class: "message conversation-greeting" }
+const _hoisted_11 = { class: "message-text reply-markdown" }
+const _hoisted_12 = { class: "message user" }
+const _hoisted_13 = { class: "message-text" }
+const _hoisted_14 = {
   key: 0,
   class: "message station-reply"
 }
-const _hoisted_13 = { class: "message-text reply-markdown" }
-const _hoisted_14 = ["data-state"]
-const _hoisted_15 = {
+const _hoisted_15 = { class: "message-text reply-markdown" }
+const _hoisted_16 = ["data-state"]
+const _hoisted_17 = {
   key: 0,
   class: "conversation-thinking-dots",
   "aria-hidden": "true"
 }
-const _hoisted_16 = ["onClick"]
-const _hoisted_17 = {
+const _hoisted_18 = ["onClick"]
+const _hoisted_19 = {
   key: 0,
   class: "conversation-topics"
 }
-const _hoisted_18 = ["aria-label"]
-const _hoisted_19 = ["onClick"]
-const _hoisted_20 = {
-  key: 1,
-  class: "conversation-avatar",
-  "aria-hidden": "true"
+const _hoisted_20 = ["aria-label"]
+const _hoisted_21 = ["onClick"]
+const _hoisted_22 = { class: "conversation-composer" }
+const _hoisted_23 = {
+  class: "station-access",
+  role: "status"
 }
-const _hoisted_21 = { class: "avatar-frame" }
-const _hoisted_22 = { class: "avatar-image" }
-const _hoisted_23 = { class: "conversation-composer" }
 const _hoisted_24 = {
   class: "station-access",
   role: "status"
@@ -1446,7 +1447,6 @@ return function render(_ctx, _cache) {
     "data-mode": "text",
     "data-guide": "popov",
     "data-phase": _ctx.active ? 'thinking' : 'ready',
-    "data-joined": !!_ctx.ui.token,
     "aria-label": _ctx.t('Разговор с Поповым у проектора')
   }, [
     _createElementVNode("header", _hoisted_2, [
@@ -1458,8 +1458,17 @@ return function render(_ctx, _cache) {
         _createVNode(_component_AppIcon, { name: "caret" })
       ], 8 /* PROPS */, _hoisted_3),
       _createElementVNode("div", _hoisted_4, [
-        _createElementVNode("h1", null, _toDisplayString(_ctx.guide.name), 1 /* TEXT */),
-        _createElementVNode("p", _hoisted_5, _toDisplayString(_ctx.connection), 1 /* TEXT */)
+        _createElementVNode("div", _hoisted_5, [
+          _createElementVNode("div", _hoisted_6, [
+            _createVNode(_component_PortraitImage, {
+              guide: _ctx.guide,
+              "use-archive": ""
+            }, null, 8 /* PROPS */, ["guide"])
+          ])
+        ])
+      ]),
+      _createElementVNode("div", _hoisted_7, [
+        _createElementVNode("h1", null, _toDisplayString(_ctx.guide.name), 1 /* TEXT */)
       ])
     ]),
     _createElementVNode("div", {
@@ -1470,20 +1479,20 @@ return function render(_ctx, _cache) {
       "aria-label": _ctx.t('История сообщений'),
       tabindex: "0"
     }, [
-      _createElementVNode("div", _hoisted_7, [
-        _createElementVNode("div", _hoisted_8, [
-          _createElementVNode("div", _hoisted_9, _toDisplayString(_ctx.guide.greeting), 1 /* TEXT */)
+      _createElementVNode("div", _hoisted_9, [
+        _createElementVNode("div", _hoisted_10, [
+          _createElementVNode("div", _hoisted_11, _toDisplayString(_ctx.guide.greeting), 1 /* TEXT */)
         ]),
         (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.ui.turns, (turn) => {
           return (_openBlock(), _createElementBlock(_Fragment, {
             key: turn.key
           }, [
-            _createElementVNode("div", _hoisted_10, [
-              _createElementVNode("span", _hoisted_11, _toDisplayString(turn.question), 1 /* TEXT */)
+            _createElementVNode("div", _hoisted_12, [
+              _createElementVNode("span", _hoisted_13, _toDisplayString(turn.question), 1 /* TEXT */)
             ]),
             (turn.answer)
-              ? (_openBlock(), _createElementBlock("div", _hoisted_12, [
-                  _createElementVNode("div", _hoisted_13, _toDisplayString(turn.answer), 1 /* TEXT */)
+              ? (_openBlock(), _createElementBlock("div", _hoisted_14, [
+                  _createElementVNode("div", _hoisted_15, _toDisplayString(turn.answer), 1 /* TEXT */)
                 ]))
               : _createCommentVNode("v-if", true),
             (_ctx.turnStatus(turn))
@@ -1493,7 +1502,7 @@ return function render(_ctx, _cache) {
                   "data-state": turn.state
                 }, [
                   (turn.state === 'generating')
-                    ? (_openBlock(), _createElementBlock("span", _hoisted_15, [...(_cache[0] || (_cache[0] = [
+                    ? (_openBlock(), _createElementBlock("span", _hoisted_17, [...(_cache[0] || (_cache[0] = [
                         _createElementVNode("i", null, null, -1 /* CACHED */),
                         _createElementVNode("i", null, null, -1 /* CACHED */),
                         _createElementVNode("i", null, null, -1 /* CACHED */)
@@ -1506,16 +1515,16 @@ return function render(_ctx, _cache) {
                         type: "button",
                         class: "text-link",
                         onClick: $event => (_ctx.retry(turn))
-                      }, _toDisplayString(_ctx.t('Повторить')), 9 /* TEXT, PROPS */, _hoisted_16))
+                      }, _toDisplayString(_ctx.t('Повторить')), 9 /* TEXT, PROPS */, _hoisted_18))
                     : _createCommentVNode("v-if", true)
-                ], 8 /* PROPS */, _hoisted_14))
+                ], 8 /* PROPS */, _hoisted_16))
               : _createCommentVNode("v-if", true)
           ], 64 /* STABLE_FRAGMENT */))
         }), 128 /* KEYED_FRAGMENT */))
       ])
-    ], 8 /* PROPS */, _hoisted_6),
+    ], 8 /* PROPS */, _hoisted_8),
     (_ctx.available)
-      ? (_openBlock(), _createElementBlock("div", _hoisted_17, [
+      ? (_openBlock(), _createElementBlock("div", _hoisted_19, [
           _createElementVNode("div", {
             class: "conversation-topic-list",
             role: "group",
@@ -1526,24 +1535,13 @@ return function render(_ctx, _cache) {
                 key: question,
                 type: "button",
                 onClick: $event => (_ctx.pick(question))
-              }, _toDisplayString(question), 9 /* TEXT, PROPS */, _hoisted_19))
+              }, _toDisplayString(question), 9 /* TEXT, PROPS */, _hoisted_21))
             }), 128 /* KEYED_FRAGMENT */))
-          ], 8 /* PROPS */, _hoisted_18)
+          ], 8 /* PROPS */, _hoisted_20)
         ]))
       : _createCommentVNode("v-if", true),
-    (_ctx.ui.token)
-      ? (_openBlock(), _createElementBlock("div", _hoisted_20, [
-          _createElementVNode("div", _hoisted_21, [
-            _createElementVNode("div", _hoisted_22, [
-              _createVNode(_component_PortraitImage, {
-                guide: _ctx.guide,
-                "use-archive": ""
-              }, null, 8 /* PROPS */, ["guide"])
-            ])
-          ])
-        ]))
-      : _createCommentVNode("v-if", true),
-    _createElementVNode("div", _hoisted_23, [
+    _createElementVNode("div", _hoisted_22, [
+      _createElementVNode("p", _hoisted_23, _toDisplayString(_ctx.connection), 1 /* TEXT */),
       _createElementVNode("p", _hoisted_24, _toDisplayString(_ctx.access), 1 /* TEXT */),
       (!_ctx.ui.token && _ctx.valid)
         ? (_openBlock(), _createElementBlock("button", {
