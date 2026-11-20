@@ -330,12 +330,12 @@ export const StationConversation = {
       <div class="avatar-frame"><div class="avatar-image"><PortraitImage :guide="guide" use-archive /></div></div>
     </div>
     <div class="conversation-composer">
-      <p class="station-access">{{ access }}</p>
+      <p class="station-access" role="status">{{ access }}</p>
       <button v-if="!ui.token && valid" type="button" class="button primary station-join"
         :disabled="!ui.online || !!ui.working" @click="join">{{ t('Начать разговор') }}</button>
       <template v-if="ui.token">
         <form class="conversation-form" id="askForm" @submit.prevent="submit">
-          <input ref="input" id="question" :value="ui.question" @input="draft($event.target.value)" :aria-label="t('Ваш вопрос')"
+          <input ref="input" id="question" name="question" :value="ui.question" @input="draft($event.target.value)" :aria-label="t('Ваш вопрос')"
             :placeholder="t('Напишите вопрос…')" maxlength="500" required autocomplete="off" enterkeyhint="send">
           <button type="button" class="round-control station-record-toggle" :aria-label="t('Аудиовопрос')"
             :aria-expanded="ui.audioOpen" :disabled="!available && !ui.audioOpen" @click="toggleAudio"><AppIcon :markup="sign('mic')" /></button>

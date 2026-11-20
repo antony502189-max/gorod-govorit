@@ -147,6 +147,30 @@ try{
  await check('Visitor screen follows selected guide',async()=>{const q=await context.newPage();await q.goto(base+'#screen');await q.locator('#screenAnswer').waitFor();await page.goto(base+'#studio');await page.locator('#guidePicker').selectOption('gorky');await q.getByRole('heading',{name:'Максим Горький',exact:true}).waitFor();await q.locator('#screenFormat').click();assert.equal(await q.locator('.round-format').count(),1);await q.close();});
  await check('Keyboard dialog focus and return',async()=>{await page.locator('#studio-knowledge').click();await page.locator('#addDoc').click();await page.locator('#closeModal').focus();await page.keyboard.press('Shift+Tab');assert.equal(await page.evaluate(()=>document.activeElement.textContent),'Сохранить материал');await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'addDoc');});
  const clean=await browser.newContext(),m=await clean.newPage();
+ await check('Keyboard skips to the current content and reaches a projector link',async()=>{
+  const tab=await clean.newPage();
+  try {
+   await tab.goto(base+'#map');
+   await tab.locator('.projection-pin').first().waitFor();
+   await tab.keyboard.press('Tab');
+   assert.equal(await tab.evaluate(()=>document.activeElement.className),'skip');
+   await tab.keyboard.press('Enter');
+   assert.equal(new URL(tab.url()).hash,'#map');
+   assert.equal(await tab.evaluate(()=>document.activeElement.id),'main');
+   const pin=tab.locator('.projection-pin').first();
+   await pin.focus();
+   await tab.keyboard.press('Space');
+   await tab.locator('.projection-location:focus').waitFor();
+   await tab.keyboard.press('Tab');
+   assert.equal(await tab.evaluate(()=>document.activeElement.getAttribute('aria-label')),'Закрыть карточку');
+   await tab.keyboard.press('Tab');
+   assert.equal(await tab.evaluate(()=>document.activeElement.textContent),'Открыть в Яндекс Картах');
+   await tab.keyboard.press('Shift+Tab');
+   await tab.keyboard.press('Enter');
+   await tab.locator('.projection-location').waitFor({state:'detached'});
+   assert.ok(await pin.evaluate(el=>el===document.activeElement));
+  } finally {await tab.close();}
+ });
  await check('320 and 390px: all seven screens fit',async()=>{for(const width of [320,390]){await m.setViewportSize({width,height:844});for(const route of ['home','studio','chat','map','screen','about','analytics']){await m.goto(base+'#'+route);await m.locator('main').waitFor();if(route==='map')await m.locator('.projection-map').waitFor();else await m.locator('main h1:visible, main h2:visible').first().waitFor();await m.evaluate(()=>document.fonts.ready);assert.ok(await m.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),route+' overflow '+width);if(['home','chat','map','studio'].includes(route))await m.screenshot({path:`qa/${route}-${width}.png`,fullPage:true});}}});
  await check('Mobile bottom navigation and guide access',async()=>{await m.goto(base);await m.locator('#mobileNav [href="#map"]').click();await m.locator('.projection-map').waitFor();const scan=m.getByRole('button',{name:'Сканировать QR-код'});await scan.click();const scanner=m.getByRole('dialog',{name:'Сканировать QR-код'});await scanner.waitFor();await scanner.getByRole('button',{name:'Выбрать фото'}).waitFor();await m.keyboard.press('Escape');await scanner.waitFor({state:'hidden'});await m.goto(base+'#about');await m.getByRole('heading',{name:'О проекте'}).waitFor();assert.equal(await m.locator('main a[href="#studio"], main a[href="#analytics"], #importProject').count(),0);assert.equal(await m.locator('#workspaceStatus').isVisible(),false);await m.getByRole('link',{name:'Выбрать гида'}).click();await m.getByRole('button',{name:'Поговорить: Максим Горький'}).click();await m.getByRole('heading',{name:'Максим Горький'}).waitFor();});
  await check('Tourist languages persist and translate the catalogue, map and guide answers',async()=>{

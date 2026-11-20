@@ -73,12 +73,18 @@ export async function mountProjectionMap(container, {onSelect, onTileStatus, sig
     title: t(site.place) + ' · ' + t(site.guide),
     icon: L.divIcon({className: 'projection-pin', html: String(index + 1), iconSize: [36,36], iconAnchor: [18,18]}),
     riseOnHover: true,
-  }).addTo(map).on('click', () => onSelect(index)));
+  }).addTo(map));
   markers.forEach((marker, index) => {
     const site = projectionSites[index];
     const element = marker.getElement();
     element.setAttribute('aria-label', t(site.place) + ' · ' + t(site.guide));
     element.setAttribute('aria-pressed', 'false');
+    marker.on('click', () => onSelect(index, element));
+    element.addEventListener('keydown', event => {
+      if (event.key !== ' ') return;
+      event.preventDefault();
+      if (!event.repeat) onSelect(index, element);
+    }, { signal });
   });
 
 

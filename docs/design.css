@@ -35,7 +35,7 @@
   --glass-solid: #e9f2ff;
   --glass-field: linear-gradient(135deg,#f6faffdc,#e4efffd9);
   --glass-float: linear-gradient(135deg,#edf5ffdc,#deecffdb);
-  --glass-action: linear-gradient(155deg,#107dc7,#096ac4 58%,#0756b6);
+  --glass-action: linear-gradient(155deg,#0c6eb8,#0964bb 58%,#0756b6);
   --glass-sky: radial-gradient(ellipse at 0 26%,#ede9ff 0,transparent 56%),radial-gradient(ellipse at 95% 64%,#bbdef9 0,transparent 65%),linear-gradient(145deg,#cde7fb,#dce7ff 54%,#d6eafa);
   --lift: inset 0 1px 2px #ffffffdf, 0 5px 16px #4678b325, 0 1px 3px #5982b21a;
   --action-shadow: inset 0 2px 3px #9ee5ff9e, 0 4px 10px #207bd039;

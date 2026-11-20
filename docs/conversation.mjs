@@ -140,7 +140,7 @@ export const ConversationPage = {
     </div>
     <div class="conversation-composer">
       <form class="conversation-form" id="askForm">
-        <input id="question" :aria-label="t('Ваш вопрос')" :placeholder="t('Напишите вопрос…')" maxlength="500" required autocomplete="off" enterkeyhint="send">
+        <input id="question" name="question" :aria-label="t('Ваш вопрос')" :placeholder="t('Напишите вопрос…')" maxlength="500" required autocomplete="off" enterkeyhint="send">
         <button type="submit" class="round-control conversation-send" id="sendQuestion" :aria-label="t('Отправить вопрос')" :title="t('Отправить вопрос')" disabled><AppIcon :markup="sign('send')" /></button>
       </form>
       <p id="askError" class="conversation-error" role="alert" hidden></p>

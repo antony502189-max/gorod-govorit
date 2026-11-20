@@ -22,6 +22,10 @@ const scope=new URL('.',import.meta.url).pathname;
 const draftKey='gg-pages-drafts:'+scope;
 const channel='BroadcastChannel'in window?new BroadcastChannel('gg-pages:'+scope):null;
 const main=$('#main'),workspaceStatus=$('#workspaceStatus');
+$('.skip').addEventListener('click', event => {
+ event.preventDefault();
+ main.focus();
+});
 let dirty=false,conflict=false,saveError='',pendingSaves=0,viewId=0,askController=null,remotePending=false,screenRound=false;
 let studioTab='profile';
 const conversations=new Map();

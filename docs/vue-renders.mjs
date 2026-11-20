@@ -54,6 +54,7 @@ return function render(_ctx, _cache) {
     (_ctx.showLanguages)
       ? (_openBlock(), _createElementBlock("select", {
           key: 0,
+          name: "language",
           class: "language-picker",
           "aria-label": _ctx.t('Язык приложения'),
           value: _ctx.language,
@@ -92,7 +93,6 @@ return function render(_ctx, _cache) {
             class: "nav-scan",
             "aria-label": _ctx.t(section.label),
             "aria-haspopup": "dialog",
-            "aria-controls": "qr-scanner",
             onClick: $event => (_ctx.$emit('scan'))
           }, [
             _createVNode(_component_AppIcon, {
@@ -117,7 +117,7 @@ return function render(_ctx, _cache) {
 })(Vue);
 
 export const guideCardRender = (Vue => {
-const { toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createElementVNode: _createElementVNode, resolveComponent: _resolveComponent, createVNode: _createVNode, resolveDynamicComponent: _resolveDynamicComponent, withCtx: _withCtx, createBlock: _createBlock, normalizeClass: _normalizeClass } = Vue
+const { toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createElementVNode: _createElementVNode, mergeProps: _mergeProps, resolveComponent: _resolveComponent, createVNode: _createVNode, resolveDynamicComponent: _resolveDynamicComponent, withCtx: _withCtx, createBlock: _createBlock, normalizeClass: _normalizeClass } = Vue
 
 const _hoisted_1 = ["data-guide"]
 const _hoisted_2 = { class: "guide-profile" }
@@ -131,7 +131,7 @@ const _hoisted_5 = {
   class: "guide-tag"
 }
 const _hoisted_6 = ["data-portrait-for"]
-const _hoisted_7 = ["src"]
+const _hoisted_7 = ["src", "loading", "fetchpriority"]
 const _hoisted_8 = {
   key: 0,
   class: "guide-profile-actions",
@@ -166,12 +166,15 @@ return function render(_ctx, _cache) {
       class: "guide-portrait",
       "data-portrait-for": _ctx.entry.id
     }, [
-      _createElementVNode("img", {
+      _createElementVNode("img", _mergeProps({
         class: "guide-archive-portrait",
         src: _ctx.archivePortraitPath(_ctx.entry.id),
         alt: "",
         decoding: "async"
-      }, null, 8 /* PROPS */, _hoisted_7)
+      }, _ctx.archiveSizes[_ctx.entry.id], {
+        loading: _ctx.entry.spotlight ? 'eager' : 'lazy',
+        fetchpriority: _ctx.entry.spotlight ? 'high' : null
+      }), null, 16 /* FULL_PROPS */, _hoisted_7)
     ], 8 /* PROPS */, _hoisted_6),
     (_ctx.entry.spotlight)
       ? (_openBlock(), _createElementBlock("div", _hoisted_8, [
@@ -198,23 +201,28 @@ return function render(_ctx, _cache) {
 })(Vue);
 
 export const guideCatalogueRender = (Vue => {
-const { resolveComponent: _resolveComponent, createVNode: _createVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createBlock: _createBlock, createElementVNode: _createElementVNode } = Vue
+const { toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, resolveComponent: _resolveComponent, createVNode: _createVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createBlock: _createBlock } = Vue
 
-const _hoisted_1 = ["aria-label"]
-const _hoisted_2 = { class: "compact-guides" }
+const _hoisted_1 = {
+  class: "guide-library guide-collection",
+  "aria-labelledby": "catalogue-title"
+}
+const _hoisted_2 = {
+  id: "catalogue-title",
+  class: "visually-hidden"
+}
+const _hoisted_3 = { class: "compact-guides" }
 
 return function render(_ctx, _cache) {
   const _component_GuideCard = _resolveComponent("GuideCard")
 
-  return (_openBlock(), _createElementBlock("section", {
-    class: "guide-library guide-collection",
-    "aria-label": _ctx.t('Гиды')
-  }, [
+  return (_openBlock(), _createElementBlock("section", _hoisted_1, [
+    _createElementVNode("h1", _hoisted_2, _toDisplayString(_ctx.t('Гиды')), 1 /* TEXT */),
     _createVNode(_component_GuideCard, {
       entry: _ctx.entries[0],
       onChoose: $event => (_ctx.$emit('choose', $event))
     }, null, 8 /* PROPS */, ["entry", "onChoose"]),
-    _createElementVNode("div", _hoisted_2, [
+    _createElementVNode("div", _hoisted_3, [
       (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(_ctx.entries.slice(1), (entry) => {
         return (_openBlock(), _createBlock(_component_GuideCard, {
           key: entry.id,
@@ -223,7 +231,7 @@ return function render(_ctx, _cache) {
         }, null, 8 /* PROPS */, ["entry", "onChoose"]))
       }), 128 /* KEYED_FRAGMENT */))
     ])
-  ], 8 /* PROPS */, _hoisted_1))
+  ]))
 }
 })(Vue);
 
@@ -249,6 +257,8 @@ const _hoisted_10 = {
 }
 const _hoisted_11 = {
   key: 1,
+  ref: "details",
+  tabindex: "-1",
   class: "projection-location",
   "aria-labelledby": "projection-location-title"
 }
@@ -316,7 +326,9 @@ return function render(_ctx, _cache) {
       ? (_openBlock(), _createElementBlock("article", _hoisted_11, [
           _createElementVNode("header", null, [
             _createElementVNode("img", {
-              src: './assets/guide-portraits/' + _ctx.selected.id + '.webp',
+              src: _ctx.archivePortraitPath(_ctx.selected.id),
+              width: "58",
+              height: "60",
               alt: ""
             }, null, 8 /* PROPS */, _hoisted_12),
             _createElementVNode("div", null, [
@@ -327,7 +339,7 @@ return function render(_ctx, _cache) {
               type: "button",
               class: "iconbutton",
               "aria-label": _ctx.t('Закрыть карточку'),
-              onClick: _ctx.overview
+              onClick: _ctx.closeDetails
             }, [
               _createVNode(_component_AppIcon, { name: "close" })
             ], 8 /* PROPS */, _hoisted_14)
@@ -342,7 +354,7 @@ return function render(_ctx, _cache) {
               rel: "noopener"
             }, _toDisplayString(_ctx.t('Открыть в Яндекс Картах')), 9 /* TEXT, PROPS */, _hoisted_17)
           ])
-        ]))
+        ], 512 /* NEED_PATCH */))
       : _createCommentVNode("v-if", true),
     _createElementVNode("ul", {
       class: "projection-sites",
@@ -355,7 +367,7 @@ return function render(_ctx, _cache) {
           _createElementVNode("button", {
             type: "button",
             "aria-pressed": _ctx.selected?.id === site.id,
-            onClick: $event => (_ctx.select(index))
+            onClick: $event => (_ctx.select(index, $event.currentTarget))
           }, [
             _createElementVNode("span", _hoisted_20, _toDisplayString(index + 1), 1 /* TEXT */),
             _createElementVNode("span", _hoisted_21, [
@@ -422,7 +434,7 @@ const _hoisted_10 = {
   "aria-live": "polite"
 }
 const _hoisted_11 = ["onSubmit"]
-const _hoisted_12 = ["aria-label"]
+const _hoisted_12 = ["aria-label", "placeholder"]
 
 return function render(_ctx, _cache) {
   const _component_GuidePortrait = _resolveComponent("GuidePortrait")
@@ -480,10 +492,13 @@ return function render(_ctx, _cache) {
     }, [
       _createElementVNode("input", {
         id: "question",
+        name: "question",
         "aria-label": _ctx.t('Ваш вопрос'),
-        placeholder: "Задайте вопрос персонажу",
+        placeholder: _ctx.t('Напишите вопрос…'),
         maxlength: "500",
-        required: ""
+        required: "",
+        autocomplete: "off",
+        enterkeyhint: "send"
       }, null, 8 /* PROPS */, _hoisted_12),
       _cache[2] || (_cache[2] = _createElementVNode("button", {
         class: "button",
@@ -1317,6 +1332,7 @@ return function render(_ctx, _cache) {
       _createElementVNode("form", _hoisted_16, [
         _createElementVNode("input", {
           id: "question",
+          name: "question",
           "aria-label": _ctx.t('Ваш вопрос'),
           placeholder: _ctx.t('Напишите вопрос…'),
           maxlength: "500",
@@ -1388,7 +1404,10 @@ const _hoisted_20 = {
 const _hoisted_21 = { class: "avatar-frame" }
 const _hoisted_22 = { class: "avatar-image" }
 const _hoisted_23 = { class: "conversation-composer" }
-const _hoisted_24 = { class: "station-access" }
+const _hoisted_24 = {
+  class: "station-access",
+  role: "status"
+}
 const _hoisted_25 = ["disabled", "onClick"]
 const _hoisted_26 = ["onSubmit"]
 const _hoisted_27 = ["value", "onInput", "aria-label", "placeholder"]
@@ -1545,6 +1564,7 @@ return function render(_ctx, _cache) {
               _createElementVNode("input", {
                 ref: "input",
                 id: "question",
+                name: "question",
                 value: _ctx.ui.question,
                 onInput: $event => (_ctx.draft($event.target.value)),
                 "aria-label": _ctx.t('Ваш вопрос'),

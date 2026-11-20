@@ -1,11 +1,18 @@
 import { guidePortraitRender, appHeaderRender, appNavigationRender, guideCardRender, guideCatalogueRender, mapPageRender, aboutPageRender, visitorScreenRender, statisticsPageRender } from './vue-renders.mjs';
-import { createStaticVNode, defineComponent, h, onBeforeUnmount, onMounted, ref } from './vendor/vue.esm-browser.prod.mjs';
+import { createStaticVNode, defineComponent, h, nextTick, onBeforeUnmount, onMounted, ref } from './vendor/vue.esm-browser.prod.mjs';
 import { icon } from './icons.mjs?v=river-design';
 import { languages, t } from './i18n.mjs';
 import { mountProjectionMap, openCoordinates, projectionSites } from './projection-map.mjs';
 
 const illustrations = { writer: 'gorky', guide: 'nika', fox: 'boris' };
 const archivePortraitPath = id => './assets/guide-portraits/' + id + '.webp';
+const archiveSizes = {
+  gorky: { width: 370, height: 370 },
+  popov: { width: 532, height: 500 },
+  chkalov: { width: 376, height: 480 },
+  minin: { width: 293, height: 345 },
+  gorodovoy: { width: 381, height: 480 },
+};
 
 export const AppIcon = defineComponent({
   props: { name: String, markup: String },
@@ -26,6 +33,7 @@ export const PortraitImage = defineComponent({
         class: archive ? 'archival-portrait' : guide.image ? 'uploaded-portrait' : 'illustrated-portrait',
         src: source,
         alt: guide.name,
+        ...(archive ? archiveSizes[guide.id] : !guide.image && { width: 560, height: 560 }),
         decoding: 'async',
       });
     };
@@ -54,7 +62,7 @@ export const AppHeader = {
       </svg>
       <span>{{ t('Город говорит') }}<small class="brand-light">{{ t('Нижний Новгород') }}</small></span>
     </a>
-    <select v-if="showLanguages" class="language-picker" :aria-label="t('Язык приложения')" :value="language"
+    <select v-if="showLanguages" name="language" class="language-picker" :aria-label="t('Язык приложения')" :value="language"
       @change="$emit('language', $event.target.value)">
       <option v-for="item in languages" :key="item.id" :value="item.id" :lang="item.tag">{{ item.name }}</option>
     </select>
@@ -76,7 +84,7 @@ export const AppNavigation = {
   template: `
     <template v-for="section in sections" :key="section.route">
       <button v-if="section.route === 'scan'" type="button" class="nav-scan" :aria-label="t(section.label)"
-        aria-haspopup="dialog" aria-controls="qr-scanner" @click="$emit('scan')">
+        aria-haspopup="dialog" @click="$emit('scan')">
         <AppIcon :name="section.icon" />
       </button>
       <a v-else :href="'#' + section.route" :data-nav="section.route"
@@ -99,7 +107,7 @@ const GuideCard = {
   props: ['entry'],
   emits: ['choose'],
   components: { AppIcon },
-  setup() { return { archivePortraitPath, t }; },
+  setup() { return { archivePortraitPath, archiveSizes, t }; },
   render: guideCardRender,
   template: `
     <article :data-guide="entry.id" :class="['guide-card', entry.spotlight ? 'guide-spotlight' : 'guide-compact']">
@@ -111,7 +119,8 @@ const GuideCard = {
         </div>
       </div>
       <div aria-hidden="true" class="guide-portrait" :data-portrait-for="entry.id">
-        <img class="guide-archive-portrait" :src="archivePortraitPath(entry.id)" alt="" decoding="async">
+        <img class="guide-archive-portrait" :src="archivePortraitPath(entry.id)" alt="" decoding="async"
+          v-bind="archiveSizes[entry.id]" :loading="entry.spotlight ? 'eager' : 'lazy'" :fetchpriority="entry.spotlight ? 'high' : null">
       </div>
       <div v-if="entry.spotlight" class="guide-profile-actions" aria-hidden="true"><span class="guide-talk">{{ t('Поговорить') }}</span></div>
       <component :is="entry.direct ? 'a' : 'button'" class="guide-card-open"
@@ -131,7 +140,8 @@ export const GuideCatalogue = {
   setup() { return { t }; },
   render: guideCatalogueRender,
   template: `
-    <section class="guide-library guide-collection" :aria-label="t('Гиды')">
+    <section class="guide-library guide-collection" aria-labelledby="catalogue-title">
+      <h1 id="catalogue-title" class="visually-hidden">{{ t('Гиды') }}</h1>
       <GuideCard :entry="entries[0]" @choose="$emit('choose', $event)" />
       <div class="compact-guides">
         <GuideCard v-for="entry in entries.slice(1)" :key="entry.id" :entry="entry" @choose="$emit('choose', $event)" />
@@ -145,15 +155,20 @@ export const MapPage = {
   render: mapPageRender,
   setup() {
     const canvas = ref(null);
+    const details = ref(null);
     const layer = ref('street');
     const selected = ref(null);
     const status = ref('');
     const ready = ref(false);
     const lifecycle = new AbortController();
     let map;
-    function select(index) {
+    let opener;
+    async function select(index, trigger) {
+      opener = trigger;
       selected.value = projectionSites[index];
       map?.select(index);
+      await nextTick();
+      details.value?.focus();
     }
     function basemap(kind) {
       layer.value = kind;
@@ -163,6 +178,10 @@ export const MapPage = {
       selected.value = null;
       map?.select(null);
       map?.fitAll();
+    }
+    function closeDetails() {
+      overview();
+      opener?.focus();
     }
     onMounted(async () => {
       try {
@@ -179,8 +198,8 @@ export const MapPage = {
       }
     });
     onBeforeUnmount(() => lifecycle.abort());
-    return {canvas, layer, selected, status, ready, select, basemap, overview,
-      sites: projectionSites, openCoordinates, t};
+    return {canvas, details, layer, selected, status, ready, select, basemap, overview, closeDetails,
+      sites: projectionSites, openCoordinates, archivePortraitPath, t};
   },
   template: `
     <section class="projection-map" aria-labelledby="projection-map-title">
@@ -197,11 +216,11 @@ export const MapPage = {
         <button v-if="ready" type="button" class="projection-map-reset" @click="overview"><AppIcon name="recenter" /> {{ t('Все точки') }}</button>
       </div>
       <p v-if="status" class="projection-map-status" role="status">{{ status }}</p>
-      <article v-if="selected" class="projection-location" aria-labelledby="projection-location-title">
+      <article v-if="selected" ref="details" tabindex="-1" class="projection-location" aria-labelledby="projection-location-title">
         <header>
-          <img :src="'./assets/guide-portraits/' + selected.id + '.webp'" alt="">
+          <img :src="archivePortraitPath(selected.id)" width="58" height="60" alt="">
           <div><h2 id="projection-location-title">{{ t(selected.place) }}</h2><p>{{ t(selected.guide) }}</p></div>
-          <button type="button" class="iconbutton" :aria-label="t('Закрыть карточку')" @click="overview"><AppIcon name="close" /></button>
+          <button type="button" class="iconbutton" :aria-label="t('Закрыть карточку')" @click="closeDetails"><AppIcon name="close" /></button>
         </header>
         <p class="projection-location-address">{{ t(selected.location) }}</p>
         <p>{{ t(selected.story) }}</p>
@@ -211,7 +230,7 @@ export const MapPage = {
       </article>
       <ul class="projection-sites" :aria-label="t('Пять точек проекции')">
         <li v-for="(site, index) in sites" :key="site.id">
-          <button type="button" :aria-pressed="selected?.id === site.id" @click="select(index)">
+          <button type="button" :aria-pressed="selected?.id === site.id" @click="select(index, $event.currentTarget)">
             <span class="projection-site-index" aria-hidden="true">{{ index + 1 }}</span>
             <span class="projection-site-label"><strong>{{ t(site.place) }}</strong><small>{{ t(site.guide) }}</small></span>
             <AppIcon name="caret" />
@@ -261,7 +280,7 @@ export const VisitorScreen = {
       <p class="subtitle">{{ guide.role }} · цифровой образ</p>
       <div class="screen-subtitle" id="screenAnswer" aria-live="polite">{{ guide.greeting }}</div>
       <form class="ask-form" id="askForm" @submit.prevent="$emit('ask', $event)">
-        <input id="question" :aria-label="t('Ваш вопрос')" placeholder="Задайте вопрос персонажу" maxlength="500" required>
+        <input id="question" name="question" :aria-label="t('Ваш вопрос')" :placeholder="t('Напишите вопрос…')" maxlength="500" required autocomplete="off" enterkeyhint="send">
         <button class="button" id="sendQuestion">Спросить</button>
       </form>
       <div id="askError" class="error" role="alert"></div>
