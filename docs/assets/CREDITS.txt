@@ -25,3 +25,7 @@ Phosphor Icons — MIT, см. Phosphor-LICENSE.txt.
 Панорама (volga-kremlin.webp) — иллюстрация ImageGen из проекта «Город и реки».
 Подложка маршрутов (route-map.webp) и линия прогулки по кремлю и набережной — © OpenStreetMap contributors, ODbL.
 https://www.openstreetmap.org/copyright
+
+PT Serif — ParaType, SIL Open Font License 1.1 (PT-Serif-OFL.txt).
+
+Образ Попова, положения губ и демонстрация — проект «Проектор Попова». Голос Piper Denis. Происхождение материалов и атрибуция бюста HackSpace Taganrog (CC BY 4.0): https://github.com/antony502189-max/popov-projector/blob/main/CREDITS.md

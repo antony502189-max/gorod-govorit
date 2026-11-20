@@ -1,0 +1,13 @@
+:root{--deep:#195b43;--ink:#152b25;--paper:#faf7f2;--line:#e2e0d6}
+body,body[data-page=guides],body[data-page=chat],body[data-page=studio]{background:var(--paper)}
+body[data-page=guides]{--library-surface:var(--paper);--library-action:var(--deep);--library-ink:var(--ink)}
+.topbar,#mobileNav{background:var(--paper)}
+.library-heading h1,.guide-profile h2,.conversation-identity h1,.reply-sources-viewer h2{font-weight:720}
+.library-heading h1{font-size:clamp(1.85rem,6vw,2.8rem)}
+.library-create,.guide-talk,.guide-edit,.conversation-modes,.conversation-modes button{border-radius:9px}
+.library-create{background:var(--deep);color:white}.guide-library .guide-card{border-radius:12px}
+.conversation{--chat-action:var(--deep);--chat-surface:var(--paper);--chat-field:#f1eee8}
+.conversation-modes button{width:auto;min-width:44px;padding:0 10px;font-size:.82rem}
+.projector-guide{color:var(--ink);display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;text-decoration:none;background:var(--paper)}
+.projector-guide img{width:70px;height:76px;object-fit:cover;background:#e7dfcf;border-radius:9px}.projector-guide span{flex:1}.projector-guide strong,.projector-guide small{display:block}.projector-guide small{margin-top:4px;color:#4e655c}
+@media(max-width:719px){.guide-library .guide-card:not(.guide-spotlight){grid-template-areas:"portrait profile actions";grid-template-columns:76px 1fr 44px;padding:9px;gap:9px;align-content:center}.guide-card:not(.guide-spotlight) .guide-title{display:block}.guide-card:not(.guide-spotlight) .guide-title .guide-tag{max-inline-size:100%}.guide-card:not(.guide-spotlight) .guide-portrait{min-height:80px}.guide-card:not(.guide-spotlight) .guide-profile-actions{flex-direction:column;gap:0}.guide-card:not(.guide-spotlight) .guide-talk{width:44px;padding:0;font-size:0;gap:0}.guide-card:not(.guide-spotlight) .guide-edit{width:44px;height:44px}.guide-spotlight::before{opacity:.45}.reply-sources-viewer{inset:auto 0 0;margin:0 auto;width:100%;border-radius:18px 18px 0 0}}

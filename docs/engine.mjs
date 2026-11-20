@@ -1,4 +1,5 @@
-import {routes} from './data.mjs?v=river-design';
+import {defaultGuides,routes} from './data.mjs?v=river-design';
+import {cityPhotos} from './city-photos.mjs';
 
 // Russian suffix normalization follows Snowball's RV/R2 rules.
 // Specification: https://snowballstem.org/algorithms/russian/stemmer.html
@@ -23,14 +24,43 @@ export function tokens(s){return (s.toLowerCase().replaceAll('ё','е').match(/[
 // Keep a conservative noun-form alternative alongside Snowball to avoid
 // over-stemming nouns such as «псевдоним» as verbs. One query word = one hit.
 function lexical(s){return (s.toLowerCase().replaceAll('ё','е').match(/[а-яa-z0-9]+/g)||[]).filter(x=>x.length>1&&!stop.has(x)).map(w=>[...new Set([stem(w),w.replace(/(?:иями|ией|иям|ием|иях|ями|ами|ов|ев|ах|ях|ом|ем|ам|ям|ы|и|а|я|у|ю|е|о)$/,'')])]);}
+function requestedPhoto(question, query, guideId) {
+ if (!['gorky', 'nika'].includes(guideId)) return null;
+ if (!/(?:^|[^а-яё])(?:фото[а-яё]*|фотк[а-яё]+|сним(?:ок|к[а-яё]+)|как\s+выгляд[а-яё]+)(?![а-яё])/i.test(question)) return null;
+ return cityPhotos.find(photo => photo.names.some(name =>
+  lexical(name).every(term => query.some(word => term.some(form => word.includes(form))))
+ ));
+}
+const formattedExamples = new Map([
+ ['g-books', `### Произведения Горького
+
+Горький написал пьесу **«На дне»** и автобиографическую повесть **«Детство»**. В экспозиции также представлены:
+
+- *«Макар Чудра»* — рассказ, опубликованный в 1892 году.
+- *«Жизнь Клима Самгина»* — неоконченный роман.`],
+ ['g-museum', `### Два раздела портала
+
+| Раздел | Что в нём |
+| --- | --- |
+| **Начать диалог** | Беседа с цифровым образом Горького |
+| **Виртуальный музей** | Материалы о писателе и местной истории |
+
+[Посмотреть цифровых гидов](#guides)`],
+]);
+const originalExamples = new Map(defaultGuides[0].docs.map(doc => [doc.id, doc.text]));
+
 export function answer(question,guide){
  const query=lexical(question);
+ const photo=requestedPhoto(question,query,guide.id);
+ if(photo)return {text:photo.text,photoId:photo.id,source:null,matched:true,algorithm:'photo'};
  const documents=guide.docs.map(d=>({d,terms:lexical(d.title+' '+(d.tags||'')+' '+d.text).flat()}));
  const avg=documents.reduce((a,d)=>a+d.terms.length,0)/(documents.length||1);
  const ranked=documents.map(({d,terms})=>{let hits=0,score=0;for(const q of query){const tf=terms.filter(t=>q.includes(t)).length;if(!tf)continue;hits++;const df=documents.filter(x=>q.some(t=>x.terms.includes(t))).length;score+=Math.log(1+(documents.length-df+.5)/(df+.5))*(tf*2.2)/(tf+1.2*(.25+.75*terms.length/(avg||1)));}return {d,score,hits};}).sort((a,b)=>b.score-a.score);
  const best=ranked[0];const coverage=best?best.hits/(query.length||1):0;
  if(!best||!best.hits||coverage<.6)return {text:'В моей базе нет достаточно точных сведений об этом. Попробуйте уточнить вопрос или выберите одну из тем ниже.',source:null,matched:false,algorithm:'BM25',coverage:0};
- return {text:best.d.text,source:{id:best.d.source,title:best.d.source,url:best.d.url||'',checkedAt:best.d.checkedAt||null},matched:true,algorithm:'BM25',coverage:Number(coverage.toFixed(2)),documentId:best.d.id};
+ const example=guide.id==='gorky'&&best.d.text===originalExamples.get(best.d.id)
+  ? formattedExamples.get(best.d.id) : undefined;
+ return {text:example??best.d.text,source:{id:best.d.source,title:best.d.source,url:best.d.url||'',checkedAt:best.d.checkedAt||null},matched:true,algorithm:'BM25',coverage:Number(coverage.toFixed(2)),documentId:best.d.id,...(guide.id==='nika'&&best.d.id==='n-kremlin'?{photoId:'kremlin'}:{})};
 }
 export function validateState(s){
  const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);

@@ -1,0 +1,24 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"><meta name="theme-color" content="#faf7f2"><title>Александр Попов · Город говорит</title><link rel="icon" href="./favicon.svg"><link rel="stylesheet" href="./popov.css"><script src="./popov.js" defer></script></head>
+<body><main id="app" data-mode="text">
+<header><a class="back" href="./#guides" aria-label="К списку гидов">‹</a><div class="name"><h1>Александр Попов</h1><small>Гид у проектора</small></div><div class="switch" role="group" aria-label="Режим общения"><button id="chatTab" aria-pressed="true">Чат</button><button id="voiceTab" aria-pressed="false">Голос</button></div></header>
+<section class="scroll">
+  <div class="identity"><img src="./assets/popov.webp" alt="Цифровой образ Александра Попова"><div><strong>Александр Попов</strong><small id="availability" role="status">Проверяем связь…</small></div></div>
+  <section id="welcome"><p>Вы у проекции Попова. Можно задать три вопроса. Ответ услышат все рядом с проектором.</p><button id="start" disabled>Начать разговор</button></section>
+  <section id="away" hidden><h2>У радиоприёмника</h2><p>Послушайте, как Попов объясняет свой опыт.</p><video controls playsinline preload="none" poster="./assets/popov.webp" src="./assets/popov-demo.mp4"></video><p>Для разговора откройте QR-код у проектора или введите адрес из пульта площадки.</p><form id="connect"><label for="address">Адрес площадки</label><input id="address" placeholder="192.168.1.10:8765" required><button>Подключиться</button></form></section>
+  <div class="stage" id="voiceStage" hidden><img src="./assets/popov.webp" alt=""><small id="voiceStatus">Задайте вопрос</small><p id="voiceCaption">Задайте вопрос Попову</p></div>
+  <ol id="history" aria-label="Ваш разговор"></ol>
+  <p id="notice" role="status"></p><button id="again" hidden>Новый разговор</button>
+</section>
+<section class="dock">
+  <form id="compose" hidden>
+    <div class="suggestions"><button type="button">Как работает приёмник?</button><button type="button">Кто вы?</button></div>
+    <div id="recordPanel" hidden><button id="record" type="button">Записать вопрос</button><label id="fileLabel" class="file">Выбрать аудиозапись<input id="upload" type="file" accept="audio/*,video/mp4,video/webm" capture="user"></label>
+      <div id="review" hidden><audio id="listen" controls></audio><div><button type="button" id="decode">Распознать</button><button type="button" id="discard" class="secondary">Удалить</button></div></div>
+    </div>
+    <div class="entry"><textarea id="question" rows="1" maxlength="500" aria-label="Ваш вопрос" placeholder="Напишите вопрос…"></textarea><button id="submit" aria-label="Отправить вопрос">↑</button></div>
+    <small id="remaining"></small>
+  </form>
+</section>
+</main>
+<dialog id="sources" aria-labelledby="sourceTitle"><div><h2 id="sourceTitle">Источники</h2><button id="closeSources" aria-label="Закрыть">×</button></div><a target="_blank" rel="noopener" href="https://polymus.ru/collection/detail/pribor-dlya-obnaruzheniya-i-registrirovaniya-elektricheskikh-kolebaniy">Прибор для обнаружения электрических колебаний<small>Политехнический музей ↗</small></a></dialog>
+</body></html>
