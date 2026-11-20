@@ -1,3 +1,4 @@
+import { locale, localizedGuide, setLocale, t } from './i18n.mjs';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from './vendor/vue.esm-browser.prod.mjs';
 import { AppIcon, PortraitImage } from './views.mjs';
 import { popovQuestions, projectorGuide } from './popov-guide.mjs';
@@ -24,6 +25,7 @@ export function enterStationRoute() {
   const fragment = new URLSearchParams(location.hash.slice(1));
   if (fragment.has('join')) {
     const code = fragment.get('join');
+    if (fragment.has('lang')) setLocale(fragment.get('lang'));
     if (code !== storage.get('admission')) {
       storage.set('admission', code);
       storage.set('token', '');
@@ -37,13 +39,13 @@ export function enterStationRoute() {
 
 function turnStatus(turn) {
   return {
-    generating: turn.answer ? 'Готовлю озвучку…' : 'Готовлю ответ…',
-    queued: turn.ahead ? 'В очереди · перед вами ' + turn.ahead : 'Ответ готов, ждём проектор',
-    delivered: 'Ответ передан на проектор',
-    prepared: 'Готовлюсь говорить…',
-    started: 'Попов говорит у проектора',
-    failed: turn.error || 'Ответ не прозвучал. Вопрос можно повторить.',
-    cancelled: 'Озвучка остановлена. Вопрос можно повторить.',
+    generating: turn.answer ? t('Готовлю озвучку…') : t('Готовлю ответ…'),
+    queued: turn.ahead ? t('В очереди · перед вами {count}', {count:turn.ahead}) : t('Ответ готов, ждём проектор'),
+    delivered: t('Ответ передан на проектор'),
+    prepared: t('Готовлюсь говорить…'),
+    started: t('Попов говорит у проектора'),
+    failed: t(turn.error) || t('Ответ не прозвучал. Вопрос можно повторить.'),
+    cancelled: t('Озвучка остановлена. Вопрос можно повторить.'),
     finished: '',
   }[turn.state];
 }
@@ -71,16 +73,16 @@ export const StationConversation = {
     const valid = computed(() => /^\d+\.[a-f\d]{64}$/.test(admission) && clock.value < expiry);
     const available = computed(() => ui.token && ui.online && valid.value && ui.remaining > 0 && !active.value);
     const access = computed(() => {
-      if (!admission) return 'Отсканируйте QR-код на экране Попова, чтобы начать разговор.';
-      if (!valid.value) return 'Время доступа истекло. Отсканируйте новый QR-код на экране Попова.';
-      if (ui.token && !ui.remaining && !active.value) return 'Три вопроса использованы. Для нового разговора отсканируйте следующий QR-код.';
-      if (!ui.token) return 'Ответ прозвучит у проектора. За один разговор можно задать три вопроса.';
-      return 'Осталось вопросов: ' + ui.remaining + ' из 3';
+      if (!admission) return t('Отсканируйте QR-код на экране Попова, чтобы начать разговор.');
+      if (!valid.value) return t('Время доступа истекло. Отсканируйте новый QR-код на экране Попова.');
+      if (ui.token && !ui.remaining && !active.value) return t('Три вопроса использованы. Для нового разговора отсканируйте следующий QR-код.');
+      if (!ui.token) return t('Ответ прозвучит у проектора. За один разговор можно задать три вопроса.');
+      return t('Осталось вопросов: {count} из 3', {count:ui.remaining});
     });
     const connection = computed(() => {
-      if (ui.offline) return 'Связь с площадкой прервана';
-      if (ui.online === null) return 'Проверяем связь…';
-      return ui.online ? 'Проектор на связи' : 'Проектор не на связи';
+      if (ui.offline) return t('Связь с площадкой прервана');
+      if (ui.online === null) return t('Проверяем связь…');
+      return ui.online ? t('Проектор на связи') : t('Проектор не на связи');
     });
 
     const life = new AbortController();
@@ -96,7 +98,7 @@ export const StationConversation = {
       });
       const data = await response.json();
       if (!response.ok) {
-        throw Object.assign(new Error(typeof data.error === 'string' ? data.error : 'Проверьте запрос.'), {
+        throw Object.assign(new Error(typeof data.error === 'string' ? data.error : t('Проверьте запрос.')), {
           status: response.status,
         });
       }
@@ -135,7 +137,7 @@ export const StationConversation = {
         if (request.signal.aborted || life.signal.aborted) return;
         if (err.status === 401) {
           storage.set('token', ui.token = '');
-          ui.error = err.message;
+          ui.error = t(err.message);
         } else {
           ui.online = false;
           ui.offline = true;
@@ -157,8 +159,8 @@ export const StationConversation = {
       ui.error = '';
       try { await action(); }
       catch (err) {
-        if (!life.signal.aborted) ui.error = err.status ? err.message
-          : 'Связь с площадкой прервана. Попробуйте ещё раз.';
+        if (!life.signal.aborted) ui.error = err.status ? t(err.message)
+          : t('Связь с площадкой прервана. Попробуйте ещё раз.');
       } finally {
         if (!life.signal.aborted) {
           ui.working = '';
@@ -178,8 +180,8 @@ export const StationConversation = {
     }
     function join() {
       if (!valid.value || !ui.online) return;
-      return perform('Подключаемся…', async () => {
-        accept(await api('start', {admission, client_id: client, language: 'ru'}));
+      return perform(t('Подключаемся…'), async () => {
+        accept(await api('start', {admission, client_id: client, language: locale()}));
       });
     }
     function submit() {
@@ -189,8 +191,8 @@ export const StationConversation = {
         pending = {text, key: randomKey()};
         storage.set('pending', JSON.stringify(pending));
       }
-      return perform('Отправляем вопрос…', async () => {
-        accept(await api('question', pending));
+      return perform(t('Отправляем вопрос…'), async () => {
+        accept(await api('question', {...pending, language:locale()}));
       });
     }
     function retry(turn) {
@@ -208,7 +210,7 @@ export const StationConversation = {
     function setClip(blob, fileName) {
       clearClip();
       if (!blob?.size || blob.size > maxRecording) {
-        ui.error = 'Выберите аудиозапись размером до 10 МБ.';
+        ui.error = t('Выберите аудиозапись размером до 10 МБ.');
         return;
       }
       clip = {blob, fileName};
@@ -230,7 +232,7 @@ export const StationConversation = {
     async function record() {
       if (ui.recording) { stopRecording(); return; }
       if (!available.value || ui.working || !hasMic) return;
-      ui.working = 'Запрашиваем микрофон…';
+      ui.working = t('Запрашиваем микрофон…');
       ui.error = '';
       try {
         microphone = await navigator.mediaDevices.getUserMedia({audio: true});
@@ -254,7 +256,7 @@ export const StationConversation = {
         recordingTimer = setTimeout(stopRecording, 19500);
       } catch {
         stopRecording();
-        ui.error = 'Микрофон недоступен. Можно загрузить запись или написать вопрос.';
+        ui.error = t('Микрофон недоступен. Можно загрузить запись или написать вопрос.');
       } finally {
         ui.working = '';
         schedule(0);
@@ -266,9 +268,10 @@ export const StationConversation = {
     }
     function decode() {
       if (!clip || !available.value) return;
-      return perform('Распознаём запись…', async () => {
+      return perform(t('Распознаём запись…'), async () => {
         const form = new FormData();
         form.append('recording', clip.blob, clip.fileName);
+        form.append('language', locale());
         const data = await api('transcribe', form);
         clearClip();
         ui.audioOpen = false;
@@ -294,17 +297,17 @@ export const StationConversation = {
       stopRecording();
       clearClip();
     });
-    return {ui, sign, transcript, input, upload, active, available, valid, access, connection, hasMic,
-      guide: projectorGuide, questions: popovQuestions, turnStatus, draft, pick, join, submit, retry,
+    return {ui, sign, t, transcript, input, upload, active, available, valid, access, connection, hasMic,
+      guide: localizedGuide(projectorGuide), questions: popovQuestions.map(question => t(question)), turnStatus, draft, pick, join, submit, retry,
       toggleAudio, record, uploadClip, decode, clearClip};
   },
   template: `<section class="conversation station-conversation" data-mode="text" data-guide="popov"
-    :data-phase="active ? 'thinking' : 'ready'" :data-joined="!!ui.token" aria-label="Разговор с Поповым у проектора">
+    :data-phase="active ? 'thinking' : 'ready'" :data-joined="!!ui.token" :aria-label="t('Разговор с Поповым у проектора')">
     <header class="conversation-header">
-      <a href="#home" class="conversation-back round-control" aria-label="К списку гидов"><AppIcon name="caret" /></a>
+      <a href="#home" class="conversation-back round-control" :aria-label="t('К списку гидов')"><AppIcon name="caret" /></a>
       <div class="conversation-identity"><h1>{{ guide.name }}</h1><p role="status">{{ connection }}</p></div>
     </header>
-    <div ref="transcript" class="conversation-log" id="messages" role="log" aria-label="История сообщений" tabindex="0">
+    <div ref="transcript" class="conversation-log" id="messages" role="log" :aria-label="t('История сообщений')" tabindex="0">
       <div class="conversation-turns">
         <div class="message conversation-greeting"><div class="message-text reply-markdown">{{ guide.greeting }}</div></div>
         <template v-for="turn in ui.turns" :key="turn.key">
@@ -313,13 +316,13 @@ export const StationConversation = {
           <div v-if="turnStatus(turn)" class="conversation-waiting" :data-state="turn.state">
             <span v-if="turn.state === 'generating'" class="conversation-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span>
             <span>{{ turnStatus(turn) }}</span>
-            <button v-if="available && (turn.state === 'failed' || turn.state === 'cancelled')" type="button" class="text-link" @click="retry(turn)">Повторить</button>
+            <button v-if="available && (turn.state === 'failed' || turn.state === 'cancelled')" type="button" class="text-link" @click="retry(turn)">{{ t('Повторить') }}</button>
           </div>
         </template>
       </div>
     </div>
     <div v-if="available" class="conversation-topics">
-      <div class="conversation-topic-list" role="group" aria-label="Темы для разговора">
+      <div class="conversation-topic-list" role="group" :aria-label="t('Темы для разговора')">
         <button v-for="question in questions" :key="question" type="button" @click="pick(question)">{{ question }}</button>
       </div>
     </div>
@@ -329,29 +332,29 @@ export const StationConversation = {
     <div class="conversation-composer">
       <p class="station-access">{{ access }}</p>
       <button v-if="!ui.token && valid" type="button" class="button primary station-join"
-        :disabled="!ui.online || !!ui.working" @click="join">Начать разговор</button>
+        :disabled="!ui.online || !!ui.working" @click="join">{{ t('Начать разговор') }}</button>
       <template v-if="ui.token">
         <form class="conversation-form" id="askForm" @submit.prevent="submit">
-          <input ref="input" id="question" :value="ui.question" @input="draft($event.target.value)" aria-label="Ваш вопрос"
-            placeholder="Напишите вопрос…" maxlength="500" required autocomplete="off" enterkeyhint="send">
-          <button type="button" class="round-control station-record-toggle" aria-label="Аудиовопрос"
+          <input ref="input" id="question" :value="ui.question" @input="draft($event.target.value)" :aria-label="t('Ваш вопрос')"
+            :placeholder="t('Напишите вопрос…')" maxlength="500" required autocomplete="off" enterkeyhint="send">
+          <button type="button" class="round-control station-record-toggle" :aria-label="t('Аудиовопрос')"
             :aria-expanded="ui.audioOpen" :disabled="!available && !ui.audioOpen" @click="toggleAudio"><AppIcon :markup="sign('mic')" /></button>
-          <button type="submit" id="sendQuestion" class="round-control conversation-send" aria-label="Отправить вопрос"
+          <button type="submit" id="sendQuestion" class="round-control conversation-send" :aria-label="t('Отправить вопрос')"
             :disabled="!available || !ui.question.trim() || !!ui.working || ui.recording"><AppIcon :markup="sign('send')" /></button>
         </form>
-        <section v-if="ui.audioOpen" class="station-audio" aria-label="Аудиовопрос">
+        <section v-if="ui.audioOpen" class="station-audio" :aria-label="t('Аудиовопрос')">
           <div class="station-audio-actions">
             <button v-if="hasMic" class="button" type="button" :disabled="(!available || !!ui.working) && !ui.recording"
-              @click="record">{{ ui.recording ? 'Остановить запись' : 'Записать до 20 секунд' }}</button>
-            <button class="button" type="button" :disabled="!available || !!ui.working || ui.recording" @click="upload.click()">Загрузить запись</button>
+              @click="record">{{ t(ui.recording ? 'Остановить запись' : 'Записать до 20 секунд') }}</button>
+            <button class="button" type="button" :disabled="!available || !!ui.working || ui.recording" @click="upload.click()">{{ t('Загрузить запись') }}</button>
             <input ref="upload" hidden type="file" accept="audio/*,video/mp4,video/webm" @change="uploadClip">
           </div>
-          <p v-if="!hasMic" class="station-access">Для записи микрофона нужен HTTPS. Здесь можно загрузить запись.</p>
+          <p v-if="!hasMic" class="station-access">{{ t('Для записи микрофона нужен HTTPS. Здесь можно загрузить запись.') }}</p>
           <template v-if="ui.clip">
-            <audio controls :src="ui.clip" aria-label="Прослушать запись"></audio>
+            <audio controls :src="ui.clip" :aria-label="t('Прослушать запись')"></audio>
             <div class="station-audio-actions">
-              <button type="button" class="button primary" :disabled="!available || !!ui.working" @click="decode">Распознать запись</button>
-              <button type="button" class="button" @click="clearClip">Удалить</button>
+              <button type="button" class="button primary" :disabled="!available || !!ui.working" @click="decode">{{ t('Распознать запись') }}</button>
+              <button type="button" class="button" @click="clearClip">{{ t('Удалить') }}</button>
             </div>
           </template>
         </section>

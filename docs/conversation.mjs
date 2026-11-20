@@ -1,3 +1,4 @@
+import { locale, speechLocale, t } from './i18n.mjs';
 import { conversationPageRender } from './vue-renders.mjs';
 import { createStaticVNode, onBeforeUnmount, onMounted, ref } from './vendor/vue.esm-browser.prod.mjs';
 import { AppIcon, PortraitImage } from './views.mjs?v=matching-gorky';
@@ -90,7 +91,8 @@ function waitingMessage() {
   const waiting = document.createElement('div');
   waiting.className = 'conversation-waiting';
   waiting.setAttribute('role', 'status');
-  waiting.innerHTML = '<span class="conversation-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>Готовлю ответ…</span>';
+  waiting.innerHTML = '<span class="conversation-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span><span></span>'
+  waiting.lastElementChild.textContent = t('Готовлю ответ…');
   return waiting;
 }
 
@@ -110,25 +112,25 @@ export const ConversationPage = {
     let controls;
     onMounted(() => { controls = bindConversation(root.value, props.binding); });
     onBeforeUnmount(() => controls?.destroy());
-    return { root, look, sign };
+    return { root, look, sign, t };
   },
   render: conversationPageRender,
-  template: `<section ref="root" class="conversation" data-mode="text" data-phase="ready" :data-look="look" :data-guide="guide.id" aria-label="Диалог с персонажем">
+  template: `<section ref="root" class="conversation" data-mode="text" data-phase="ready" :data-look="look" :data-guide="guide.id" :aria-label="t('Диалог с персонажем')">
     <header class="conversation-header">
-      <a href="#home" class="conversation-back round-control" aria-label="К списку гидов" title="К списку гидов"><AppIcon name="caret" /></a>
+      <a href="#home" class="conversation-back round-control" :aria-label="t('К списку гидов')" :title="t('К списку гидов')"><AppIcon name="caret" /></a>
       <div class="conversation-identity">
         <h1>{{ guide.name }}</h1>
-        <p>{{ guide.role }}{{ guide.id === 'gorky' ? ' · Цифровой образ' : '' }}</p>
+        <p>{{ guide.role }}{{ guide.id === 'gorky' ? ' · ' + t('Цифровой образ') : '' }}</p>
       </div>
     </header>
-    <div class="conversation-log" id="messages" role="log" aria-label="История сообщений" tabindex="0">
+    <div class="conversation-log" id="messages" role="log" :aria-label="t('История сообщений')" tabindex="0">
       <div class="conversation-turns">
         <div class="message conversation-greeting"><div class="message-text reply-markdown">{{ guide.greeting }}</div></div>
         <StoredMessage v-for="(message, index) in binding.messages" :key="index" :message="message" :render-message="binding.renderMessage" />
       </div>
     </div>
     <div class="conversation-topics" :hidden="!questions.length">
-      <div class="conversation-topic-list" role="group" aria-label="Темы для разговора"><button v-for="question in questions" :key="question" type="button" :data-question="question">{{ question }}</button></div>
+      <div class="conversation-topic-list" role="group" :aria-label="t('Темы для разговора')"><button v-for="question in questions" :key="question" type="button" :data-question="question">{{ question }}</button></div>
     </div>
     <div class="conversation-avatar" aria-hidden="true">
       <div class="avatar-frame">
@@ -138,8 +140,8 @@ export const ConversationPage = {
     </div>
     <div class="conversation-composer">
       <form class="conversation-form" id="askForm">
-        <input id="question" aria-label="Ваш вопрос" placeholder="Напишите вопрос…" maxlength="500" required autocomplete="off" enterkeyhint="send">
-        <button type="submit" class="round-control conversation-send" id="sendQuestion" aria-label="Отправить вопрос" title="Отправить вопрос" disabled><AppIcon :markup="sign('send')" /></button>
+        <input id="question" :aria-label="t('Ваш вопрос')" :placeholder="t('Напишите вопрос…')" maxlength="500" required autocomplete="off" enterkeyhint="send">
+        <button type="submit" class="round-control conversation-send" id="sendQuestion" :aria-label="t('Отправить вопрос')" :title="t('Отправить вопрос')" disabled><AppIcon :markup="sign('send')" /></button>
       </form>
       <p id="askError" class="conversation-error" role="alert" hidden></p>
     </div>
@@ -181,7 +183,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
     for (const button of turns.querySelectorAll('[data-read-reply]')) {
       button.disabled = !supportsSpeech || sending;
       const reading = speaking?.button === button;
-      const label = reading ? 'Остановить озвучку' : 'Озвучить ответ';
+      const label = reading ? t('Остановить озвучку') : t('Озвучить ответ');
       if (button.getAttribute('aria-label') !== label) {
         button.setAttribute('aria-label', label);
         button.title = label;
@@ -211,14 +213,14 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
     if (!text || signal.aborted) return;
     stopSpeech();
     if (!supportsSpeech) {
-      showError('Озвучка недоступна в этом браузере.');
+      showError(t('Озвучка недоступна в этом браузере.'));
       return;
     }
     const synth = window.speechSynthesis;
     const utterance = new SpeechSynthesisUtterance(text);
-    const russianVoice = synth.getVoices().find(voice => /^ru(?:[-_]|$)/i.test(voice.lang));
-    if (russianVoice) utterance.voice = russianVoice;
-    utterance.lang = 'ru-RU';
+    const selectedVoice = synth.getVoices().find(voice => voice.lang.toLowerCase().split(/[-_]/)[0] === locale());
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.lang = speechLocale();
     utterance.rate = guide.voice === 'calm' ? .92 : 1.02;
     const playback = { utterance, button, startTimer: null };
     speaking = playback;
@@ -233,7 +235,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
     };
     const failed = () => {
       if (!finish()) return;
-      showError('Не удалось озвучить ответ. Проверьте, доступен ли русский голос.');
+      showError(t('Не удалось озвучить ответ. Проверьте, доступен ли русский голос.'));
     };
     utterance.onstart = () => {
       if (speaking !== playback) return;
@@ -262,7 +264,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
     const actions = document.createElement('div');
     actions.className = 'reply-actions';
     actions.setAttribute('role', 'group');
-    actions.setAttribute('aria-label', 'Действия с ответом');
+    actions.setAttribute('aria-label', t('Действия с ответом'));
 
     function action(glyph, label) {
       const button = document.createElement('button');
@@ -274,18 +276,18 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
       return button;
     }
 
-    const copy = action('copy', 'Скопировать ответ');
+    const copy = action('copy', t('Скопировать ответ'));
     on(copy, 'click', async () => {
       try {
         await navigator.clipboard.writeText(plainReply(reply.text));
-        if (!signal.aborted) notify('Ответ скопирован', true);
+        if (!signal.aborted) notify(t('Ответ скопирован'), true);
       } catch {
-        if (!signal.aborted) notify('Не удалось скопировать ответ');
+        if (!signal.aborted) notify(t('Не удалось скопировать ответ'));
       }
     });
 
-    const up = action('helpful', 'Хороший ответ');
-    const down = action('unhelpful', 'Плохой ответ');
+    const up = action('helpful', t('Хороший ответ'));
+    const down = action('unhelpful', t('Плохой ответ'));
     function paintRating() {
       up.setAttribute('aria-pressed', String(ratings.get(reply) === 'helpful'));
       down.setAttribute('aria-pressed', String(ratings.get(reply) === 'unhelpful'));
@@ -310,7 +312,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
     on(up, 'click', () => void rate('helpful'));
     on(down, 'click', () => void rate('unhelpful'));
 
-    const read = action('speaker', 'Озвучить ответ');
+    const read = action('speaker', t('Озвучить ответ'));
     read.dataset.readReply = '';
     read.disabled = !supportsSpeech;
     on(read, 'click', () => {
@@ -319,7 +321,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
     });
     const sources = replySources(reply);
     if (sources.length) {
-      const button = action('sources', 'Источники');
+      const button = action('sources', t('Источники'));
       button.setAttribute('aria-haspopup', 'dialog');
       on(button, 'click', () => openReplySources(sources));
     }
@@ -387,7 +389,7 @@ function bindConversation(root, { guide, messages, renderMessage, ask, feedback,
       if (signal.aborted) return;
       bubble.remove();
       questionInput.value ||= question;
-      const message = cause.name === 'TimeoutError' ? 'Ответ задерживается. Попробуйте ещё раз.' : cause.message;
+      const message = cause.name === 'TimeoutError' ? t('Ответ задерживается. Попробуйте ещё раз.') : cause.message;
       showError(message);
     } finally {
       if (!signal.aborted) {

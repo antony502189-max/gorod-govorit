@@ -1,3 +1,4 @@
+import { locale, t } from './i18n.mjs';
 import {defaultGuides,routes} from './data.mjs?v=river-design';
 import {cityPhotos} from './city-photos.mjs';
 
@@ -21,11 +22,30 @@ export function stem(word){
  return w.slice(0,rv)+tail;
 }
 export function tokens(s){return (s.toLowerCase().replaceAll('ё','е').match(/[а-яa-z0-9]+/g)||[]).filter(x=>x.length>1&&!stop.has(x)).map(stem);}
-// Keep a conservative noun-form alternative alongside Snowball to avoid
-// over-stemming nouns such as «псевдоним» as verbs. One query word = one hit.
-function lexical(s){return (s.toLowerCase().replaceAll('ё','е').match(/[а-яa-z0-9]+/g)||[]).filter(x=>x.length>1&&!stop.has(x)).map(w=>[...new Set([stem(w),w.replace(/(?:иями|ией|иям|ием|иях|ями|ами|ов|ев|ах|ях|ом|ем|ам|ям|ы|и|а|я|у|ю|е|о)$/,'')])]);}
+// Keep a conservative noun-form alternative alongside Snowball for Russian.
+const englishStop = new Set('a an the i me my you your he she his her they their who what where when why how did do does was were is are be been to of in on at for and or about can could would please show tell give it that over'.split(' '));
+const chineseStop = new Set('什么 怎么 怎样 如何 哪里 哪儿 哪些 是谁 请问 告诉 知道 以及 关于 能否 可以 时候 谢谢'.split(' '));
+const chineseWords = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('zh',{granularity:'word'}) : null;
+
+function lexical(s) {
+ if (locale() !== 'ru') {
+  const words = locale() === 'zh' && chineseWords
+   ? [...chineseWords.segment(s.toLowerCase())].filter(item=>item.isWordLike).map(item=>item.segment)
+   : (s.toLowerCase().match(/[\p{L}\p{N}]+/gu)||[]);
+  return words.filter(word=>word.length>1 && !englishStop.has(word) && !chineseStop.has(word))
+   .map(word=>[...new Set([word,word.replace(/([a-z]{3,})s$/,'$1')])]);
+ }
+ return (s.toLowerCase().replaceAll('ё','е').match(/[а-яa-z0-9]+/g)||[])
+  .filter(x=>x.length>1&&!stop.has(x)).map(w=>[...new Set([stem(w),w.replace(/(?:иями|ией|иям|ием|иях|ями|ами|ов|ев|ах|ях|ом|ем|ам|ям|ы|и|а|я|у|ю|е|о)$/,'')])]);
+}
+
 function requestedPhoto(question, query, guideId) {
  if (!['gorky', 'nika'].includes(guideId)) return null;
+ if (locale() !== 'ru') {
+  if (!/photo|picture|image|照片|图片|看看/i.test(question)) return null;
+  const names = [/kremlin|克里姆林宫/i,/chkalov|契卡洛夫/i,/volga|伏尔加河/i,/nativity|圣诞/i];
+  return cityPhotos[names.findIndex(pattern=>pattern.test(question))];
+ }
  if (!/(?:^|[^а-яё])(?:фото[а-яё]*|фотк[а-яё]+|сним(?:ок|к[а-яё]+)|как\s+выгляд[а-яё]+)(?![а-яё])/i.test(question)) return null;
  return cityPhotos.find(photo => photo.names.some(name =>
   lexical(name).every(term => query.some(word => term.some(form => word.includes(form))))
@@ -52,13 +72,13 @@ const originalExamples = new Map(defaultGuides[0].docs.map(doc => [doc.id, doc.t
 export function answer(question,guide){
  const query=lexical(question);
  const photo=requestedPhoto(question,query,guide.id);
- if(photo)return {text:photo.text,photoId:photo.id,source:null,matched:true,algorithm:'photo'};
+ if(photo)return {text:t(photo.text),photoId:photo.id,source:null,matched:true,algorithm:'photo'};
  const documents=guide.docs.map(d=>({d,terms:lexical(d.title+' '+(d.tags||'')+' '+d.text).flat()}));
  const avg=documents.reduce((a,d)=>a+d.terms.length,0)/(documents.length||1);
  const ranked=documents.map(({d,terms})=>{let hits=0,score=0;for(const q of query){const tf=terms.filter(t=>q.includes(t)).length;if(!tf)continue;hits++;const df=documents.filter(x=>q.some(t=>x.terms.includes(t))).length;score+=Math.log(1+(documents.length-df+.5)/(df+.5))*(tf*2.2)/(tf+1.2*(.25+.75*terms.length/(avg||1)));}return {d,score,hits};}).sort((a,b)=>b.score-a.score);
  const best=ranked[0];const coverage=best?best.hits/(query.length||1):0;
- if(!best||!best.hits||coverage<.6)return {text:'В моей базе нет достаточно точных сведений об этом. Попробуйте уточнить вопрос или выберите одну из тем ниже.',source:null,matched:false,algorithm:'BM25',coverage:0};
- const example=guide.id==='gorky'&&best.d.text===originalExamples.get(best.d.id)
+ if(!best||!best.hits||coverage<.6)return {text:t('В моей базе нет достаточно точных сведений об этом. Попробуйте уточнить вопрос или выберите одну из тем ниже.'),source:null,matched:false,algorithm:'BM25',coverage:0};
+ const example=locale()==='ru'&&guide.id==='gorky'&&best.d.text===originalExamples.get(best.d.id)
   ? formattedExamples.get(best.d.id) : undefined;
  return {text:example??best.d.text,source:{id:best.d.source,title:best.d.source,url:best.d.url||'',checkedAt:best.d.checkedAt||null},matched:true,algorithm:'BM25',coverage:Number(coverage.toFixed(2)),documentId:best.d.id,...(guide.id==='nika'&&best.d.id==='n-kremlin'?{photoId:'kremlin'}:{})};
 }

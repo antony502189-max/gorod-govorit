@@ -1,3 +1,4 @@
+import { t } from './i18n.mjs';
 import MarkdownIt from './vendor/markdown-it-15.0.3.mjs';
 
 const markdown = new MarkdownIt({ html: false, breaks: true });
@@ -35,7 +36,7 @@ markdown.renderer.rules.image = (tokens, index, options, env, self) => {
   const image = renderImage(tokens, index, options, env, self);
   const linkBoundary = tokens.slice(0, index).findLast(item => item.type === 'link_open' || item.type === 'link_close');
   return linkBoundary?.type === 'link_open' ? image
-    : `<button type="button" class="reply-photo-open" aria-label="Увеличить фото">${image}</button>`;
+    : `<button type="button" class="reply-photo-open" aria-label="${markdown.utils.escapeHtml(t('Увеличить фото'))}">${image}</button>`;
 };
 
 export function renderReplyMarkdown(text) {

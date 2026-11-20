@@ -12,7 +12,7 @@ try{
   for(const [width,height] of [[320,568],[360,740],[390,844],[430,932]]){
    await p.setViewportSize({width,height});
    for(const route of ['home','studio','chat','map','screen','about','analytics']){
-    await p.goto(base+'#'+route);await p.locator(route==='map'?'.map-placeholder':'main h1:visible,main h2:visible').first().waitFor();
+    await p.goto(base+'#'+route);await p.locator(route==='map'?'.projection-map':'main h1:visible,main h2:visible').first().waitFor();
     assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width} ${route}: overflow`);
     assert.ok(await p.locator('input:not([type=file]):not([type=checkbox]):not([type=color]),textarea,select').evaluateAll(es=>es.filter(e=>e.offsetWidth).every(e=>parseFloat(getComputedStyle(e).fontSize)>=16)),`${route}: input font triggers iOS zoom`);
     if(route!=='screen'){const r=await p.locator('#mobileNav').boundingBox();assert.ok(r.y+r.height<=height+1);}
@@ -35,12 +35,38 @@ try{
   assert.ok(await p.locator('body').evaluate(e=>e.classList.contains('keyboard-open')));assert.ok(!await p.locator('#mobileNav').isVisible());const b=await p.locator('#sendQuestion').boundingBox();assert.ok(b.y+b.height<=420);await p.screenshot({path:'qa/mobile/chat-keyboard-layout.png'});
   await p.evaluate(()=>{delete window.visualViewport.height;window.visualViewport.dispatchEvent(new Event('resize'));});
  });
- await check('The map tab is an empty template and old route links open it',async()=>{
+ await check('The map shows the five projectors and old route links open it',async()=>{
   await p.goto(base+'#routes');
-  await p.locator('.map-placeholder').waitFor();
+  await p.locator('.projection-map').waitFor();
   assert.equal(new URL(p.url()).hash,'#map');
-  assert.equal(await p.locator('main').innerText(),'');
-  assert.deepEqual(await p.locator('#mobileNav a').allTextContents(),['Главная','Карта','Ещё']);
+  assert.equal(await p.locator('.projection-sites button').count(),5);
+  const pins = p.locator('.projection-pin');
+  await pins.last().waitFor();
+  assert.equal(await pins.count(),5);
+  await p.getByRole('button',{name:'Спутник',exact:true}).click();
+  assert.equal(await p.getByRole('button',{name:'Спутник',exact:true}).getAttribute('aria-pressed'),'true');
+  await p.locator('.projection-map img[src*="/World_Imagery/"]').first().waitFor({state:'attached'});
+  await p.getByRole('button',{name:'Схема',exact:true}).click();
+  await p.locator('.projection-map img[src*="tile.openstreetmap.org"]').first().waitFor({state:'attached'});
+  const details = p.locator('.projection-location');
+  const points = ['44.006961,56.326997','44.008924,56.330091','43.995413,56.317288','44.013937,56.329342','44.01851,56.3228'];
+  for (const [index, coords] of points.entries()) {
+   await p.locator('.projection-sites button').nth(index).click();
+   const links = details.getByRole('link');
+   assert.equal(await links.count(),1);
+   assert.equal(await links.first().textContent(),'Открыть в Яндекс Картах');
+   const destination = new URL(await links.first().getAttribute('href'));
+   assert.equal(destination.origin + destination.pathname,'https://yandex.ru/maps/');
+   assert.equal(destination.searchParams.get('ll'),coords);
+   assert.equal(destination.searchParams.get('pt'),coords);
+  }
+  await details.getByText('Улица Семашко, 19').waitFor();
+  await p.getByRole('button',{name:'Все точки',exact:true}).click();
+  await details.waitFor({state:'hidden'});
+  assert.deepEqual(await p.locator('#mobileNav a, #mobileNav button').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label') || item.textContent)),['Главная','Сканировать QR-код','Карта']);
+  const nav = await p.locator('#mobileNav').boundingBox();
+  const scan = await p.getByRole('button',{name:'Сканировать QR-код'}).boundingBox();
+  assert.ok(scan.y < nav.y && Math.abs(scan.x + scan.width / 2 - (nav.x + nav.width / 2)) < 1);
   assert.equal(await p.locator('#mobileNav a.active').innerText(),'Карта');
   assert.equal(await p.locator('.topbar').isVisible(),false);
   await p.locator('#mobileNav [href="#home"]').click();

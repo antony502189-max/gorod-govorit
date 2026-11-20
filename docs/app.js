@@ -1,7 +1,9 @@
+import { applyPageLanguage, locale, localizedGuide, setLocale, speechLocale, t } from './i18n.mjs';
 import { h, render as renderVue } from './vendor/vue.esm-browser.prod.mjs';
 import { AboutPage, AppHeader, AppNavigation, GuideCatalogue, MapPage, StatisticsPage, VisitorScreen, highlightNavigation } from './views.mjs?v=text-only';
 import {chkalovGuide, gorodovoyGuide, mininGuide} from './historical-guides.mjs';
 import {projectorGuide, popovQuestions, answerPopov} from './popov-guide.mjs';
+import { openQrScanner } from './qr-scanner.mjs';
 import { enterStationRoute, StationConversation } from './station.mjs';
 import { ConversationPage } from './conversation.mjs?v=text-only';
 import {cityPhotos} from './city-photos.mjs';
@@ -32,7 +34,7 @@ function captureDraft(){const form=$('#guideForm');if(!form)return;const g=draft
 function commitDrafts(){for(const [id,g]of Object.entries(drafts)){const i=state.guides.findIndex(x=>x.id===id);if(i>=0)state.guides[i]=structuredClone(g);}drafts={};keepDrafts();}
 function exportProject(){captureDraft();const copy=structuredClone(state);copy.guides=copy.guides.map(g=>structuredClone(drafts[g.id]||g));download('gorod-govorit-project.json',JSON.stringify({format:'gorod-govorit',version:1,state:copy},null,2));}
 function status(){const box=$('#workspaceStatus');if(!box)return;const changed=dirty||Object.keys(drafts).length;box.hidden=location.hash==='#about'||!(changed||pendingSaves||saveError||conflict||remotePending||['studio','analytics'].includes(location.hash.slice(1)));
- box.innerHTML=`<span role="status">${esc(conflict?'В другом окне есть новая версия. Ваши изменения сохранены в черновике.':saveError|| (pendingSaves?'Сохраняем…':changed?'Есть несохранённые изменения':remotePending?'Доступно обновление из другого окна':'Все изменения сохранены'))}</span>${changed||saveError?'<button id="retrySave" class="button small">Сохранить изменения</button>':''}${conflict||remotePending?'<button id="loadRemote" class="button secondary small">Загрузить сохранённую версию</button>':''}<button id="backupProject" class="text-link">Скачать проект</button>`;
+ box.innerHTML=`<span role="status">${esc(conflict?'В другом окне есть новая версия. Ваши изменения сохранены в черновике.':saveError|| (pendingSaves?t('Сохраняем…'):changed?t('Есть несохранённые изменения'):remotePending?'Доступно обновление из другого окна':t('Все изменения сохранены')))}</span>${changed||saveError?'<button id="retrySave" class="button small">Сохранить изменения</button>':''}${conflict||remotePending?'<button id="loadRemote" class="button secondary small">Загрузить сохранённую версию</button>':''}<button id="backupProject" class="text-link">${esc(t('Скачать проект'))}</button>`;
  $('#backupProject').onclick=exportProject;
  if(document.body.dataset.page==='chat')updateViewport();
  $('#retrySave')?.addEventListener('click',async()=>{captureDraft();commitDrafts();try{await save();render();}catch(e){toast(e.message);}});
@@ -72,16 +74,17 @@ function usesFixedGuide(g){return fixedGuides.get(g.id)===g;}
 function catalogueEntries() {
  return publicGuides().map(g => ({
   id: g.id,
-  name: g.name,
+  name: t(g.name),
   spotlight: g.id === 'gorky',
-  category: g.id === 'gorky' || g.id === 'minin' ? 'Народное ополчение' : g.tag?.trim(),
+  category: t(g.id === 'gorky' || g.id === 'minin' ? 'Народное ополчение' : g.tag?.trim()),
   direct: usesFixedGuide(g),
  }));
 }
 
 function conversationHistory(id) {
- if (!conversations.has(id)) conversations.set(id, []);
- return conversations.get(id);
+ const key = locale() + ':' + id;
+ if (!conversations.has(key)) conversations.set(key, []);
+ return conversations.get(key);
 }
 
 function suggestions(g){return g.id==='gorky'?['Ваше настоящее имя?','Что вы написали?','Покажите фото кремля','Диалоги на Кожевенной']:g.id==='nika'?['Что посмотреть в кремле?','Покажи фото Чкаловской лестницы','Можно на велосипеде?','Сколько стоят билеты?']:g.id==='hotel'?['Во сколько завтрак?','Когда заселение?']:g.docs.slice(0,3).map(d=>d.title);}
@@ -90,14 +93,14 @@ function replyPhotoHtml(id) {
  if (!photo) return '';
  const url = './assets/' + photo.file;
  return `<figure class="reply-photo">
-   <button type="button" class="reply-photo-open" aria-label="Увеличить фото: ${esc(photo.title)}"><img src="${esc(url)}" alt="${esc(photo.alt)}" width="${photo.width}" height="${photo.height}" loading="lazy" decoding="async"></button>
-   <figcaption><span>${esc(photo.title)}</span><small><a href="${esc(photo.original)}" target="_blank" rel="noopener noreferrer">${esc(photo.author)}</a></small></figcaption>
+   <button type="button" class="reply-photo-open" aria-label="${esc(t('Увеличить фото'))}: ${esc(t(photo.title))}"><img src="${esc(url)}" alt="${esc(t(photo.alt))}" width="${photo.width}" height="${photo.height}" loading="lazy" decoding="async"></button>
+   <figcaption><span>${esc(t(photo.title))}</span><small><a href="${esc(photo.original)}" target="_blank" rel="noopener noreferrer">${esc(photo.author)}</a></small></figcaption>
  </figure>`;
 }
 const photoViewer = document.createElement('dialog');
 photoViewer.className = 'reply-photo-viewer';
-photoViewer.setAttribute('aria-label', 'Просмотр фотографии');
-photoViewer.innerHTML = `<button type="button" aria-label="Закрыть фото" autofocus>${icon('close')}</button><img alt="">`;
+photoViewer.dataset.i18nLabel = 'Просмотр фотографии';
+photoViewer.innerHTML = `<button type="button" aria-label="Закрыть фото" data-i18n-label="Закрыть фото" autofocus>${icon('close')}</button><img alt="">`;
 document.body.append(photoViewer);
 photoViewer.querySelector('button').onclick = () => photoViewer.close();
 photoViewer.addEventListener('click', event => {
@@ -116,7 +119,7 @@ window.addEventListener('hashchange', () => photoViewer.close());
 function replySources(reply) {
  const photo = cityPhotos.find(item => item.id === reply.photoId);
  const items = [...(reply.sources ?? []), reply.source];
- if (photo) items.push({title: 'Фото: ' + photo.title, url: photo.original});
+ if (photo) items.push({title: t('Фото') + ': ' + t(photo.title), url: photo.original});
  const seen = new Set();
  return items.filter(Boolean).flatMap(item => {
   const known = Object.hasOwn(sources, item.id) ? sources[item.id] : item;
@@ -128,14 +131,14 @@ function replySources(reply) {
   const key = url?.href || known.title;
   if (!key || seen.has(key)) return [];
   seen.add(key);
-  return [{title: known.title, url, checkedAt: item.checkedAt}];
+  return [{title: t(known.title), url, checkedAt: item.checkedAt}];
  });
 }
 
 const sourcesViewer = document.createElement('dialog');
 sourcesViewer.className = 'reply-sources-viewer';
 sourcesViewer.setAttribute('aria-labelledby', 'replySourcesTitle');
-sourcesViewer.innerHTML = `<header><h2 id="replySourcesTitle">Источники</h2><button type="button" aria-label="Закрыть источники" autofocus>${icon('close')}</button></header><ul></ul>`;
+sourcesViewer.innerHTML = `<header><h2 id="replySourcesTitle" data-i18n="Источники">Источники</h2><button type="button" aria-label="Закрыть источники" data-i18n-label="Закрыть источники" autofocus>${icon('close')}</button></header><ul></ul>`;
 document.body.append(sourcesViewer);
 sourcesViewer.querySelector('button').onclick = () => sourcesViewer.close();
 sourcesViewer.addEventListener('click', event => {
@@ -147,7 +150,7 @@ function openReplySources(items) {
  if (sourcesViewer.open) return;
  sourcesViewer.querySelector('ul').innerHTML = items.map(({title, url, checkedAt}) => {
   const label = esc(title);
-  const meta = [url?.hostname.replace(/^www\./, ''), checkedAt && 'Проверено: ' + checkedAt].filter(Boolean).join(' · ');
+  const meta = [url?.hostname.replace(/^www\./, ''), checkedAt && t('Проверено') + ': ' + checkedAt].filter(Boolean).join(' · ');
   const content = `<span class="source-glyph" aria-hidden="true">${icon(url?.hostname.includes('wikimedia') ? 'layers' : 'museum')}</span><span class="source-details">${label}${meta ? `<small>${esc(meta)}</small>` : ''}</span>`;
   return `<li>${url ? `<a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">${content}${icon('arrow')}</a>` : `<span>${content}</span>`}</li>`;
  }).join('');
@@ -158,8 +161,8 @@ function messageHtml(message, showCitation = false) {
  if (message.user) return `<div class="message user"><span class="message-text">${esc(message.text)}</span></div>`;
  const source = showCitation === true ? message.source : null;
  const details = source && (Object.hasOwn(sources, source.id) ? sources[source.id] : source);
- const date = source?.checkedAt ? `<small class="source-date">Проверено: ${esc(source.checkedAt)}</small>` : '';
- const label = details ? 'Источник: ' + esc(details.title) : '';
+ const date = source?.checkedAt ? `<small class="source-date">${esc(t('Проверено'))}: ${esc(source.checkedAt)}</small>` : '';
+ const label = details ? t('Источник') + ': ' + esc(t(details.title)) : '';
  const citation = details?.url
   ? `<a class="message-source" href="${esc(details.url)}" target="_blank" rel="noopener noreferrer">${label}</a>`
   : label ? `<span class="message-source">${label}</span>` : '';
@@ -233,12 +236,13 @@ function pageView(page) {
     onExport: () => download('events.json', JSON.stringify(state.events, null, 2)),
    });
   case 'chat': {
-   const guide = chatGuide();
+   const original = chatGuide();
+   const guide = localizedGuide(original);
    main.dataset.chatGuide = guide.id;
    if (stationMode && guide.id === 'popov') return h(StationConversation, {key});
    return h(ConversationPage, {
     key, guide,
-    questions: guide === projectorGuide ? popovQuestions : suggestions(guide),
+    questions: (original === projectorGuide ? popovQuestions : suggestions(original)).map(question => t(question)),
     binding: {
      guide,
      messages: conversationHistory(guide.id),
@@ -267,7 +271,7 @@ async function saveFeedback(guideId, reply, value) {
  }
  try {
   await save({quiet:true});
-  if (document.body.dataset.page === 'chat') toast('Спасибо за оценку', true);
+  if (document.body.dataset.page === 'chat') toast(t('Спасибо за оценку'), true);
  } catch (error) {
   if (previous === undefined) {
    state.events = state.events.filter(item => item !== record);
@@ -427,9 +431,9 @@ async function requestAnswer(question){
  const current=()=>originView===viewId&&guideId===chatGuide().id&&!controller.signal.aborted;
  try{
   await saveQueue;
-  if(dirty||conflict)throw Error('Сначала сохраните изменения проекта.');
+  if(dirty||conflict)throw Error(t('Сначала сохраните изменения проекта.'));
   const response=activeGuide===projectorGuide ? answerPopov(question)
-   : usesFixedGuide(activeGuide) ? answer(question,activeGuide)
+   : usesFixedGuide(activeGuide) || (locale() !== 'ru' && fixedGuides.has(guideId)) ? answer(question,localizedGuide(activeGuide))
    : await api('/api/ask',{method:'POST',body:{guideId,question},signal:controller.signal});
   if(!current())return null;
   event('ask',response.matched?'matched':'unknown',guideId);
@@ -459,29 +463,38 @@ async function askOnScreen(e){
   if(input.isConnected){send.disabled=false;send.textContent='Спросить';}
  }
 }
-function speak(text){if(!('speechSynthesis'in window))return toast('Озвучка недоступна в этом браузере');speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='ru-RU';const v=speechSynthesis.getVoices().find(v=>v.lang.startsWith('ru'));if(v)u.voice=v;u.rate=guide().voice==='calm'?.9:1.02;u.onstart=()=>{document.body.classList.add('speaking');document.querySelectorAll('.portrait').forEach(p=>p.classList.add('talking'));};u.onend=u.onerror=()=>{document.body.classList.remove('speaking');document.querySelectorAll('.portrait').forEach(p=>p.classList.remove('talking'));};speechSynthesis.speak(u);}
+function speak(text){if(!('speechSynthesis'in window))return toast('Озвучка недоступна в этом браузере');speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=speechLocale();const v=speechSynthesis.getVoices().find(v=>v.lang.toLowerCase().split(/[-_]/)[0]===locale());if(v)u.voice=v;u.rate=guide().voice==='calm'?.9:1.02;u.onstart=()=>{document.body.classList.add('speaking');document.querySelectorAll('.portrait').forEach(p=>p.classList.add('talking'));};u.onend=u.onerror=()=>{document.body.classList.remove('speaking');document.querySelectorAll('.portrait').forEach(p=>p.classList.remove('talking'));};speechSynthesis.speak(u);}
 function openScreen(){window.open(location.pathname+'#screen','gorod-visitor');}
 function renderNavigation(page) {
  const header = $('.topbar');
  header.hidden = page === 'map';
- if (!header.hidden) renderVue(h(AppHeader), header);
+ if (!header.hidden) renderVue(h(AppHeader, {
+  showLanguages: page === 'home',
+  language: locale(),
+  onLanguage: value => {
+   if (value === locale() || !setLocale(value)) return;
+   applyPageLanguage();
+   render();
+  },
+ }), header);
  const nav = $('#mobileNav');
- renderVue(h(AppNavigation, {page}), nav);
+ renderVue(h(AppNavigation, {key:locale(), page, onScan: openQrScanner}), nav);
  highlightNavigation(nav, page);
 }
 
-window.addEventListener('hashchange',()=>{if(stationMode)enterStationRoute();captureDraft();if(location.hash==='#studio')studioTab='profile';closeModal();document.body.classList.remove('speaking');window.speechSynthesis?.cancel();render();});
+window.addEventListener('hashchange',()=>{if(stationMode){enterStationRoute();applyPageLanguage();}captureDraft();if(location.hash==='#studio')studioTab='profile';closeModal();document.body.classList.remove('speaking');window.speechSynthesis?.cancel();render();});
 async function receiveUpdate(){remotePending=true;if(busy||pendingSaves||dirty||Object.keys(drafts).length||$('#docForm')){status();return;}const view=viewId;try{const j=await api('/api/state');if(busy||pendingSaves||dirty||Object.keys(drafts).length||$('#docForm')||view!==viewId)return;if(j.revision>revision){state=j.state;revision=j.revision;window.speechSynthesis?.cancel();document.body.classList.remove('speaking');render();}remotePending=false;status();}catch{}}
 channel&&(channel.onmessage=receiveUpdate);
 window.addEventListener('beforeunload',e=>{if(dirty||Object.keys(drafts).length){e.preventDefault();e.returnValue='';}});
 
+applyPageLanguage();
 renderNavigation(location.hash.slice(1) || 'home');
-renderVue(h('section', {class:'panel'}, [h('span', {class:'loader'}), ' Загружаем вашу рабочую область…']), main);
+renderVue(h('section', {class:'panel'}, [h('span', {class:'loader'}), ' '+t('Загружаем вашу рабочую область…')]), main);
 sync().then(render).catch(error => {
  renderVue(h('section', {class:'empty'}, [
-  h('h2', 'Не удалось подключиться'),
+  h('h2', t('Не удалось подключиться')),
   h('p', {class:'note'}, error.message),
-  h('button', {class:'button', id:'retry', onClick:() => location.reload()}, 'Попробовать снова'),
+  h('button', {class:'button', id:'retry', onClick:() => location.reload()}, t('Попробовать снова')),
  ]), main);
 });
 

@@ -1,3 +1,5 @@
+import { locale, t } from './i18n.mjs';
+
 // Conversation materials from the station's visitor-question script.
 export const projectorGuide = {
   id: 'popov',
@@ -33,6 +35,18 @@ const topics = [
 export const popovQuestions = topics.map(topic => topic.title);
 
 export function answerPopov(question) {
+  const language = locale();
+  if (language !== 'ru') {
+    const query = question.toLowerCase();
+    const patterns = language === 'en'
+      ? [/receiver|antenna|relay/, /who are you|your name|introduce yourself/, /(?:radio )?waves?|wireless|signal/]
+      : [/接收机|接收器|天线|继电器/, /你是谁|您是谁|叫什[么麼]|自我介绍/, /电波|无线电|信号/];
+    const index = patterns.findIndex(pattern => pattern.test(query));
+    if (index >= 0) return {text:t(topics[index].text), matched:true, source:topics[index].source};
+    if (/hello|^hi\b|你好|您好/.test(query)) return {text:t(projectorGuide.greeting), matched:true};
+    if (/thank|谢谢|感谢/.test(query)) return {text:t('Благодарю за интерес к моим опытам.'), matched:true};
+    return {text:t('Об этом у меня пока нет рассказа. Спросите, как работает приёмник, или что такое радиоволна.'), matched:false};
+  }
   const words = question.toLowerCase().replaceAll('ё', 'е').replace(/[^а-яa-z0-9]+/g, ' ').trim();
   const topic = topics.find(item => item.pattern.test(words));
   if (topic) return {text: topic.text, matched: true, source: topic.source};
